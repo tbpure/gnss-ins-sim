@@ -12,6 +12,6 @@ __pycache__/
 /demo_saved_data/
 
 # mag calibration algorithm camke dir
-/demo_algorithms/mag_calibrate_src/cmake/
+/sim_data_gen/demo_algorithms/mag_calibrate_src/cmake/
 
 gnss_ins_sim.egg-info/
