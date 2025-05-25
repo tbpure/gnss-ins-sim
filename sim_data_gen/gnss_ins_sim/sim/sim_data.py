@@ -151,18 +151,19 @@ class Sim_data(object):
             if len(self.output_units) > 0:
                 str_unit = ' (' + self.output_units[0] + ')'
             header_line = self.name + str_unit
+        fmt = '%f'
         #### save data and header to .csv files
         if isinstance(self.data, dict):
             for i in self.data:
                 file_name = data_dir + '//' + self.name + '-' + str(i) + '.csv'
                 np.savetxt(file_name,\
                            convert_unit(self.data[i], self.units, self.output_units),\
-                           header=header_line, delimiter=',', comments='')
+                           header=header_line, delimiter=',', comments='', fmt=fmt)
         else:
             file_name = data_dir + '//' + self.name + '.csv'
             np.savetxt(file_name,\
                        convert_unit(self.data, self.units, self.output_units),\
-                       header=header_line, delimiter=',', comments='')
+                       header=header_line, delimiter=',', comments='', fmt=fmt)
 
     def plot(self, x, key=None, plot3d=0, mpl_opt=''):
         '''
