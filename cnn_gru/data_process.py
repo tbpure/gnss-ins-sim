@@ -8,9 +8,12 @@ from utils import list_immediate_subdirectories
 import pandas as pd
 
 
-def get_imu_data():
+def get_imu_data(sim_only:bool=True):
     dirs = list_immediate_subdirectories("./demo_saved_data")
-    file_list = ["accel-0.csv", "gyro-0.csv", "mag-0.csv"]
+    if not sim_only:
+        file_list = ["ref_accel.csv", "ref_gyro.csv", "ref_mag.csv"]
+    else:
+        file_list = ["accel-0.csv", "gyro-0.csv", "mag-0.csv"]
     all_tensors = {file: [] for file in file_list}
     _len = 0
     res_tensor = torch.tensor([])
@@ -36,9 +39,12 @@ def get_imu_data():
     return res_tensor[:, :_len * 100, :]
 
 
-def get_gnss_data():
+def get_gnss_data(sim_only:bool=True):
     dirs = list_immediate_subdirectories("./demo_saved_data")
-    gps_file = "gps-0.csv"
+    if not sim_only:
+        gps_file = "ref_gps.csv"
+    else:
+        gps_file = "gps-0.csv"
     res_tensor = torch.tensor([])
     for dir in dirs:
         file_path = dir + "/" + gps_file
@@ -59,8 +65,8 @@ def cal_gnss_increment_with_batch(gnss_data):
 
 
 def get_input_output_data(pre_len: int) -> tuple[torch.Tensor, torch.Tensor]:
-    imu_data = get_imu_data()
-    gnss_data = get_gnss_data()
+    imu_data = get_imu_data(sim_only=False)
+    gnss_data = get_gnss_data(sim_only=False)
     gnss_incre = cal_gnss_increment_with_batch(gnss_data)
     assert gnss_incre.shape[1] == gnss_data.shape[1] - 1
     imu_data = imu_data[:, :gnss_incre.shape[1] * 100, :]

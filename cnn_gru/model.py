@@ -27,6 +27,8 @@ class CNN_GRU(nn.Module):
             stride=1
         )
 
+        self.bn_after_conv = nn.BatchNorm1d(self.cnn_out)
+
         # 最大池化层 (kernel_size=3)
         self.pool = nn.MaxPool1d(
             kernel_size=3,
@@ -39,6 +41,10 @@ class CNN_GRU(nn.Module):
             hidden_size=self.gru_hidden,
             batch_first=True  # 输入形状为(batch, seq, feature)
         )
+
+        self.ln_after_gru = nn.LayerNorm(self.gru_hidden)
+
+        self.ln_before_fc = nn.LayerNorm(self.gru_hidden)
 
         # 全连接输出层
         self.fc = nn.Linear(self.gru_hidden, self.output_size)
@@ -56,6 +62,7 @@ class CNN_GRU(nn.Module):
 
         # 1D卷积 + ReLU
         x = self.conv(x)  # 输出形状: [B, cnn_out, T-1]
+        x = self.bn_after_conv(x)
         x = self.relu(x)
 
         # 最大池化
@@ -66,10 +73,10 @@ class CNN_GRU(nn.Module):
 
         # GRU处理序列
         gru_out, _ = self.gru(x)  # gru_out形状: [B, seq_len, gru_hidden]
-
+        gru_out = self.ln_after_gru(gru_out)
         # 取最后一个时间步的输出
         last_out = gru_out[:, -1, :]
-
+        last_out = self.ln_before_fc(last_out)
         # 全连接层输出
         output = self.fc(last_out)
 
@@ -88,7 +95,8 @@ if __name__ == "__main__":
         input_size=test_input_size,
         cnn_out=64,
         gru_hidden=128,
-        output_size=test_output_size
+        output_size=test_output_size,
+        lr = 0.01
     )
     # 初始化模型
     model = CNN_GRU(config)
