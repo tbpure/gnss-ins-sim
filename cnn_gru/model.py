@@ -89,7 +89,7 @@ if __name__ == "__main__":
     test_output_size = 3
 
     # 假设输入数据: batch_size=32, 序列长度100, 4个特征
-    input_data = torch.randn(32, 100, test_input_size)
+    input_data = torch.randn(32, 10, test_input_size)
 
     config = argparse.Namespace(
         input_size=test_input_size,
