@@ -37,17 +37,14 @@ def create_dataloader(input_multi, output, batch_size=32, shuffle=True):
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
-def train_model(model, train_loader, val_loader, criterion, optimizer, device, epochs=10):
+def train_model(model, train_loader, criterion, optimizer, device, epochs=10):
     """训练模型的主函数"""
     model.train()
     model.to(device)
     train_loss = []
-    val_loss = []
-    best_val_loss = float('inf')
     best_train_loss = float('inf')
 
     plt.ioff()
-    fig, ax = plt.subplots()
 
     for epoch in range(epochs):
         model.train()
@@ -75,27 +72,9 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device, e
             torch.save(model.state_dict(), 'best_train.pth')
             print(f"✅✅✅ 保存最佳训练模型（val_loss = {best_train_loss:.4f}）")
 
-        model.eval()
-        total_val_loss = 0
-        with torch.no_grad():
-            for data, target in val_loader:
-                data, target = data.to(device), target.to(device)
-                output = model(data)
-                loss = criterion(output, target)
-                total_val_loss += loss.item()
-        avg_val_loss = total_val_loss / len(val_loader)
-        print(f'Val Loss: {avg_val_loss:.4f}')
-        val_loss.append(avg_val_loss)
-
-        # 保存最佳模型
-        if avg_val_loss < best_val_loss:
-            best_val_loss = avg_val_loss
-            torch.save(model.state_dict(), 'best_val.pth')
-            print(f"✅ 保存最佳模型（val_loss = {best_val_loss:.4f}）")
         print(f'Epoch {epoch + 1}/{epochs}, Average Loss: {total_loss / len(train_loader):.4f}')
 
     plt.plot(train_loss, label='Training Loss', color='blue')
-    plt.plot(val_loss, label='Validation Loss', color='orange')
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
     plt.title('Training & Validation Loss')
@@ -108,18 +87,10 @@ def run():
     # output.shape: [50, 2400, 3]
     input_multi, output = get_input_output_data(pre_len, file_path='/Users/bytedance/PycharmProjects/gnss-ins-sim/cnn_gru/demo_saved_data/drone_sim')
 
-    total_samples = input_multi.shape[0]
-    indices = torch.randperm(total_samples)
-    split_idx = int(total_samples * 0.8)
-    train_idx, val_idx = indices[:split_idx], indices[split_idx:]
-
-    input_train, output_train = input_multi[train_idx], output[train_idx]
-    input_val, output_val = input_multi[val_idx], output[val_idx]
-
     os.makedirs("saved_data", exist_ok=True)
     torch.save({
-        'input_train': input_train,
-        'output_train': output_train
+        'input_train': input_multi,
+        'output_train': output
     }, "saved_data/train_data.pth")
     print("✅ 已保存训练集数据到 saved_data/train_data.pth")
 
@@ -135,8 +106,7 @@ def run():
     model = CNN_GRU(configs=config)
 
     # 创建数据加载器
-    train_loader = create_dataloader(input_train, output_train, batch_size=32, shuffle=True)
-    val_loader = create_dataloader(input_val, output_val, batch_size=32, shuffle=True)
+    train_loader = create_dataloader(input_multi, output, batch_size=32, shuffle=True)
 
     # 定义损失函数和优化器
     # criterion = nn.MSELoss()
@@ -153,7 +123,7 @@ def run():
     print("training on", device)
 
     # 训练模型
-    train_model(model, train_loader, val_loader, criterion, optimizer, device, epochs=100)
+    train_model(model, train_loader, criterion, optimizer, device, epochs=100)
 
 
 if __name__ == '__main__':
