@@ -1,15 +1,21 @@
 import logging
 import os.path
+from configparser import MAX_INTERPOLATION_DEPTH
 
 import numpy as np
 import torch
 
+from sim_data_gen.gnss_ins_sim.geoparams.geoparams import lla2ecef_batch
 from utils import list_immediate_subdirectories
 import pandas as pd
 
 
-def get_imu_data(sim_only:bool=True):
-    dirs = list_immediate_subdirectories("./demo_saved_data")
+def get_imu_data(sim_only:bool=True, file_path:str=''):
+
+    if file_path == '':
+        dirs = list_immediate_subdirectories('./demo_saved_data')
+    else:
+        dirs = list_immediate_subdirectories(file_path)
     if not sim_only:
         file_list = ["ref_accel.csv", "ref_gyro.csv", "ref_mag.csv"]
     else:
@@ -30,6 +36,8 @@ def get_imu_data(sim_only:bool=True):
 
             data_array = df.to_numpy().astype(np.float32)
             tensor = torch.from_numpy(data_array)
+            # todo 暂时粗暴处理长度
+            tensor = tensor[:11000]
             all_tensors[file].append(tensor)
     for file, tensors in all_tensors.items():
         if tensors:
@@ -39,8 +47,11 @@ def get_imu_data(sim_only:bool=True):
     return res_tensor[:, :_len * 100, :]
 
 
-def get_gnss_data(sim_only:bool=True):
-    dirs = list_immediate_subdirectories("./demo_saved_data")
+def get_gnss_data(sim_only:bool=True, file_path:str=''):
+    if file_path == '':
+        dirs = list_immediate_subdirectories('./demo_saved_data')
+    else:
+        dirs = list_immediate_subdirectories(file_path)
     if not sim_only:
         gps_file = "ref_gps.csv"
     else:
@@ -53,6 +64,8 @@ def get_gnss_data(sim_only:bool=True):
             data_array = df.to_numpy().astype(np.float32)
             tensor = torch.from_numpy(data_array)
             tensor = tensor.reshape((1, tensor.shape[0], tensor.shape[1]))
+            # todo 暂时粗暴处理长度
+            tensor = tensor[:, :110, :]
             res_tensor = torch.cat((res_tensor, tensor), dim=0)
     return res_tensor[:, :res_tensor.shape[1] - 1, :3]
 
@@ -64,9 +77,9 @@ def cal_gnss_increment_with_batch(gnss_data):
     return gnss_data[:, :len - 1, :]
 
 
-def get_input_output_data(pre_len: int) -> tuple[torch.Tensor, torch.Tensor]:
-    imu_data = get_imu_data(sim_only=False)
-    gnss_data = get_gnss_data(sim_only=False)
+def get_input_output_data(pre_len: int, file_path:str='') -> tuple[torch.Tensor, torch.Tensor]:
+    imu_data = get_imu_data(sim_only=False, file_path = file_path)
+    gnss_data = get_gnss_data(sim_only=False, file_path=file_path)
     gnss_incre = cal_gnss_increment_with_batch(gnss_data)
     assert gnss_incre.shape[1] == gnss_data.shape[1] - 1
     imu_data = imu_data[:, :gnss_incre.shape[1] * 100, :]
@@ -85,4 +98,4 @@ def get_input_output_data(pre_len: int) -> tuple[torch.Tensor, torch.Tensor]:
 
 
 if __name__ == '__main__':
-    get_input_output_data(100)
+    get_input_output_data(100, '/Users/bytedance/PycharmProjects/gnss-ins-sim/cnn_gru/demo_saved_data/sim_2')

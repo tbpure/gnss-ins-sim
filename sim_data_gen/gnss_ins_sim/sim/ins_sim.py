@@ -10,6 +10,8 @@ Created on 2018-04-24
 import os
 import time
 import math
+from random import random
+
 import numpy as np
 from .ins_data_manager import InsDataMgr
 from .ins_algo_manager import InsAlgoMgr
@@ -447,6 +449,7 @@ class Sim(object):
         '''
         # read motion definition
         [ini_pva, motion_def] = self.__parse_motion()
+        motion_def[:, 1:7] += np.random.uniform(0, 0.2, motion_def[:, 1:7].shape)
         # output definitions
         output_def = np.array([[1.0, self.fs[0]], [1.0, self.fs[0]], [1.0, self.fs[0]]])
         if self.imu.gps:
@@ -713,10 +716,10 @@ class Sim(object):
         # data_dir is not specified, automatically create one
         if data_dir == '':
             data_dir = os.path.abspath('.//demo_saved_data//')
-            if data_dir[-1] != '//':
-                data_dir = data_dir + '//'
-            data_dir = data_dir + time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime()) + '//'
-            data_dir = os.path.abspath(data_dir)
+        if data_dir[-1] != '//':
+            data_dir = data_dir + '//'
+        data_dir = data_dir + time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime()) + '//'
+        data_dir = os.path.abspath(data_dir)
         # create data dir
         if not os.path.exists(data_dir):
             try:

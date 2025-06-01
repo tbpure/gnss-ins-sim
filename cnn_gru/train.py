@@ -44,6 +44,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device, e
     train_loss = []
     val_loss = []
     best_val_loss = float('inf')
+    best_train_loss = float('inf')
 
     plt.ioff()
     fig, ax = plt.subplots()
@@ -69,6 +70,10 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device, e
             progress_bar.set_description(f'Epoch {epoch + 1}/{epochs}, Loss: {total_loss / (batch_idx + 1):.4f}')
         avg_loss = total_loss / len(train_loader)
         train_loss.append(avg_loss)
+        if avg_loss < best_train_loss:
+            best_train_loss = avg_loss
+            torch.save(model.state_dict(), 'best_train.pth')
+            print(f"✅✅✅ 保存最佳训练模型（val_loss = {best_train_loss:.4f}）")
 
         model.eval()
         total_val_loss = 0
@@ -85,7 +90,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device, e
         # 保存最佳模型
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
-            torch.save(model.state_dict(), 'best_model.pth')
+            torch.save(model.state_dict(), 'best_val.pth')
             print(f"✅ 保存最佳模型（val_loss = {best_val_loss:.4f}）")
         print(f'Epoch {epoch + 1}/{epochs}, Average Loss: {total_loss / len(train_loader):.4f}')
 
@@ -101,7 +106,7 @@ def run():
     pre_len = 100
     # input.multi.shape:[50, 100, 9, 2400]
     # output.shape: [50, 2400, 3]
-    input_multi, output = get_input_output_data(pre_len)
+    input_multi, output = get_input_output_data(pre_len, file_path='/Users/bytedance/PycharmProjects/gnss-ins-sim/cnn_gru/demo_saved_data/drone_sim')
 
     total_samples = input_multi.shape[0]
     indices = torch.randperm(total_samples)
@@ -110,6 +115,13 @@ def run():
 
     input_train, output_train = input_multi[train_idx], output[train_idx]
     input_val, output_val = input_multi[val_idx], output[val_idx]
+
+    os.makedirs("saved_data", exist_ok=True)
+    torch.save({
+        'input_train': input_train,
+        'output_train': output_train
+    }, "saved_data/train_data.pth")
+    print("✅ 已保存训练集数据到 saved_data/train_data.pth")
 
     config = argparse.Namespace(
         input_size=input_multi.shape[2],  # 9
