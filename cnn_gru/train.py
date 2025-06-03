@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from data_process import *
@@ -37,7 +39,7 @@ def create_dataloader(input_multi, output, batch_size=32, shuffle=True):
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
-def train_model(model, train_loader, val_loader, criterion, optimizer, device, epochs=10):
+def train_model(model, train_loader, val_loader, criterion, optimizer, device, epochs=10, save_to_path:str = ''):
     """训练模型的主函数"""
     model.train()
     model.to(device)
@@ -72,7 +74,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device, e
         train_loss.append(avg_loss)
         if avg_loss < best_train_loss:
             best_train_loss = avg_loss
-            torch.save(model.state_dict(), 'best_train.pth')
+            torch.save(model.state_dict(), save_to_path + '/best_train.pth')
             print(f"✅✅✅ 保存最佳训练模型（val_loss = {best_train_loss:.4f}）")
 
         model.eval()
@@ -90,7 +92,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device, e
         # 保存最佳模型
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
-            torch.save(model.state_dict(), 'best_val.pth')
+            torch.save(model.state_dict(), save_to_path + '/best_val.pth')
             print(f"✅ 保存最佳模型（val_loss = {best_val_loss:.4f}）")
         print(f'Epoch {epoch + 1}/{epochs}, Average Loss: {total_loss / len(train_loader):.4f}')
 
@@ -103,7 +105,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device, e
     plt.show()
 
 def run():
-    pre_len = 100
+    pre_len = 10
     # input.multi.shape:[50, 100, 9, 2400]
     # output.shape: [50, 2400, 3]
     input_multi, output = get_input_output_data(pre_len, file_path='/Users/bytedance/PycharmProjects/gnss-ins-sim/cnn_gru/demo_saved_data/drone_sim')
@@ -115,12 +117,17 @@ def run():
 
     input_train, output_train = input_multi[train_idx], output[train_idx]
     input_val, output_val = input_multi[val_idx], output[val_idx]
-
-    os.makedirs("saved_data", exist_ok=True)
+    current_time = datetime.now().strftime("%Y%m%d_%H%M")
+    save_to_path = f"val_info/{current_time}"
+    os.makedirs(save_to_path, exist_ok=True)
     torch.save({
         'input_train': input_train,
         'output_train': output_train
-    }, "saved_data/train_data.pth")
+    }, save_to_path + '/train_data.pth')
+    torch.save({
+        'input_train': input_val,
+        'output_train': output_val
+    }, save_to_path + '/val_data.pth')
     print("✅ 已保存训练集数据到 saved_data/train_data.pth")
 
     config = argparse.Namespace(
@@ -153,7 +160,7 @@ def run():
     print("training on", device)
 
     # 训练模型
-    train_model(model, train_loader, val_loader, criterion, optimizer, device, epochs=100)
+    train_model(model, train_loader, val_loader, criterion, optimizer, device, epochs=100, save_to_path=save_to_path)
 
 
 if __name__ == '__main__':
