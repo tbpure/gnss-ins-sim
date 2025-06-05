@@ -49,7 +49,6 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device, e
     best_train_loss = float('inf')
 
     plt.ioff()
-    fig, ax = plt.subplots()
 
     for epoch in range(epochs):
         model.train()
@@ -108,7 +107,7 @@ def run():
     pre_len = 10
     # input.multi.shape:[50, 100, 9, 2400]
     # output.shape: [50, 2400, 3]
-    input_multi, output = get_input_output_data(pre_len, file_path='/Users/bytedance/PycharmProjects/gnss-ins-sim/cnn_gru/demo_saved_data/drone_sim')
+    input_multi, output = get_input_output_data(pre_len, file_path='/Users/yangyu/PycharmProjects/gnss-ins-sim/cnn_gru/demo_saved_data/drone_sim')
 
     total_samples = input_multi.shape[0]
     indices = torch.randperm(total_samples)

@@ -9,4 +9,4 @@ def gen_data(file_path):
 
 
 if __name__ == '__main__':
-    gen_data('/Users/bytedance/PycharmProjects/gnss-ins-sim/cnn_gru/demo_saved_data/drone_sim')
+    gen_data('/Users/yangyu/PycharmProjects/gnss-ins-sim/cnn_gru/demo_saved_data/drone_sim')

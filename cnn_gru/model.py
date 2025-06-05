@@ -3,6 +3,14 @@ import argparse
 import torch
 import torch.nn as nn
 
+config = argparse.Namespace(
+    input_size=9,
+    cnn_out=64,
+    gru_hidden=128,
+    output_size=3,
+    lr=0.001
+)
+
 
 class CNN_GRU(nn.Module):
     def __init__(self, configs):
@@ -42,6 +50,8 @@ class CNN_GRU(nn.Module):
             batch_first=True  # 输入形状为(batch, seq, feature)
         )
 
+        self.dropout_gru = nn.Dropout(0.2)
+
         self.ln_after_gru = nn.LayerNorm(self.gru_hidden)
 
         self.ln_before_fc = nn.LayerNorm(self.gru_hidden)
@@ -73,6 +83,7 @@ class CNN_GRU(nn.Module):
 
         # GRU处理序列
         gru_out, _ = self.gru(x)  # gru_out形状: [B, seq_len, gru_hidden]
+        gru_out = self.dropout_gru(gru_out)  # 新增drop out
         gru_out = self.ln_after_gru(gru_out)
         # 取最后一个时间步的输出
         last_out = gru_out[:, -1, :]
@@ -96,7 +107,7 @@ if __name__ == "__main__":
         cnn_out=64,
         gru_hidden=128,
         output_size=test_output_size,
-        lr = 0.01
+        lr=0.01
     )
     # 初始化模型
     model = CNN_GRU(config)
