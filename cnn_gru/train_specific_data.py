@@ -32,6 +32,7 @@ def train_specific_data(file_path: str, epochs: int = 10):
         device = 'mps'
     else:
         device = 'cpu'
+    print("💻training on device:", device)
     model.to(device)
     model.train()
     current_time = datetime.now().strftime("%m%d_%H%M")
@@ -69,8 +70,11 @@ def train_specific_data(file_path: str, epochs: int = 10):
         avg_loss = total_loss / len(train_loader)
         if avg_loss < best_train_loss:
             best_train_loss = avg_loss
-            print(f"✅✅✅ 保存最佳训练模型（val_loss = {best_train_loss:.4f}）")
-            torch.save(model.state_dict(), save_model_to_dir + '/best_train.pth')
+            if epoch < 50:
+                torch.save(model.state_dict(), save_model_to_dir + '/best_train.pth')
+            else:
+                torch.save(model.state_dict(), save_model_to_dir + f'/best_train_{epoch}.pth')
+                print(f"✅✅✅ 保存最佳训练模型（val_loss = {best_train_loss:.4f}）")
 
         model.eval()
         total_val_loss = 0
@@ -95,4 +99,4 @@ def train_specific_data(file_path: str, epochs: int = 10):
 
 
 if __name__ == '__main__':
-    train_specific_data(file_path='val_info/20250603_0946', epochs=1000)
+    train_specific_data(file_path='val_info/20250603_0946', epochs=10000)
