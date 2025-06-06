@@ -1,4 +1,5 @@
 import torch
+import os
 from matplotlib import pyplot as plt
 
 from cnn_gru.model import CNN_GRU, config
@@ -7,6 +8,7 @@ def concate_data(file_path, model_name: str, x_index, y_index, z_index):
 
     if model_name == '':
         from pathlib import Path
+        pwd = os.getcwd()
         model_files = list(Path(file_path + '/models').rglob('*.pth'))
         for model_path in model_files:
             concate_data(file_path, str(model_path.name), x_index, y_index, z_index)
