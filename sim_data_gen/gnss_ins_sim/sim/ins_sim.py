@@ -449,7 +449,7 @@ class Sim(object):
         '''
         # read motion definition
         [ini_pva, motion_def] = self.__parse_motion()
-        motion_def[:, 1:7] += np.random.uniform(0, 0.2, motion_def[:, 1:7].shape)
+        # motion_def[:, 1:7] += np.random.uniform(0, 0.2, motion_def[:, 1:7].shape)
         # output definitions
         output_def = np.array([[1.0, self.fs[0]], [1.0, self.fs[0]], [1.0, self.fs[0]]])
         if self.imu.gps:
