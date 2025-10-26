@@ -151,6 +151,7 @@ class Sim_data(object):
             if len(self.output_units) > 0:
                 str_unit = ' (' + self.output_units[0] + ')'
             header_line = self.name + str_unit
+        # todo 数据精度改一下？
         fmt = '%f'
         #### save data and header to .csv files
         if isinstance(self.data, dict):

@@ -1,0 +1,26 @@
+
+------------------------------------------------------------
+Sample frequency of IMU: [fs] = 100.0 Hz
+Reference frame: 1
+Simulation time duration: 120.51 s
+Simulation runs: 1
+
+------------------------------------------------------------
+Simulation results are saved to /Users/yangyu/PycharmProjects/gnss-ins-sim/cnn_gru/demo_saved_data/drone_sim/2025-06-03-09-45-52
+The following results are saved:
+	time: sample time
+	ref_pos: true position in the local NED frame
+	ref_vel: true vel in the NED frame
+	ref_att_euler: true attitude (Euler angles, ZYX)
+	ref_accel: true accel in the body frame
+	ref_gyro: true angular velocity in the body frame
+	gps_time: GPS sample time
+	ref_gps: true GPS position and velocity in the local NED frame
+	gps_visibility: GPS visibility
+	ref_mag: true magnetic field in the body frame
+	accel: accel measurements
+	gyro: gyro measurements
+	gps: GPS position and velocity measurements in the local NED frame
+	mag: magnetometer measurements
+	ref_att_quat: true attitude (quaternion)
+
