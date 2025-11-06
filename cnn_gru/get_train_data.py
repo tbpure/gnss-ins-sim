@@ -1,4 +1,5 @@
 import argparse
+import os.path
 
 import torch
 from matplotlib import pyplot as plt
@@ -21,7 +22,10 @@ def load_specific_train_data(file_path:str, model_name: str = '', train_data: bo
         return
 
     data = torch.load(file_path + ("/train_data.pth" if train_data else "/val_data.pth"))
-    model_info = torch.load(file_path + '/models/'+ model_name)
+    if os.path.exists(file_path + '/models'):
+        model_info = torch.load(file_path + '/models/'+ model_name)
+    else:
+        model_info = torch.load(file_path + '/'+ model_name)
     config = argparse.Namespace(
         input_size=9,
         cnn_out=64,
@@ -72,4 +76,4 @@ def load_specific_train_data(file_path:str, model_name: str = '', train_data: bo
 
 
 if __name__ == "__main__":
-    load_specific_train_data("val_info/20250603_0946", "best_train.pth", train_data=True)
+    load_specific_train_data("val_info/20250603_0946", "best_train.pth", train_data=False)

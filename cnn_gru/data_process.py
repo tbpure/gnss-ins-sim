@@ -37,7 +37,7 @@ def get_imu_data(sim_only:bool=True, file_path:str=''):
             data_array = df.to_numpy().astype(np.float32)
             tensor = torch.from_numpy(data_array)
             # todo 暂时粗暴处理长度
-            tensor = tensor[:11000]
+            # tensor = tensor[:11000]
             all_tensors[file].append(tensor)
     for file, tensors in all_tensors.items():
         if tensors:
@@ -59,14 +59,19 @@ def get_gnss_data(sim_only:bool=True, file_path:str=''):
     res_tensor = torch.tensor([])
     for dir in dirs:
         file_path = dir + "/" + gps_file
-        if os.path.exists(file_path):
-            df = pd.read_csv(file_path)
-            data_array = df.to_numpy().astype(np.float32)
-            tensor = torch.from_numpy(data_array)
-            tensor = tensor.reshape((1, tensor.shape[0], tensor.shape[1]))
-            # todo 暂时粗暴处理长度
-            tensor = tensor[:, :110, :]
-            res_tensor = torch.cat((res_tensor, tensor), dim=0)
+        resize = False
+        if not os.path.exists(file_path):
+            file_path = dir + "/" + 'ref_pos.csv'
+            resize = True
+        df = pd.read_csv(file_path)
+        data_array = df.to_numpy().astype(np.float32)
+        tensor = torch.from_numpy(data_array)
+        tensor = tensor.reshape((1, tensor.shape[0], tensor.shape[1]))
+        # todo 暂时粗暴处理长度
+        # tensor = tensor[:, :110, :]
+        if resize:
+            tensor = tensor[:, ::100, :]
+        res_tensor = torch.cat((res_tensor, tensor), dim=0)
     return res_tensor[:, :res_tensor.shape[1] - 1, :3]
 
 

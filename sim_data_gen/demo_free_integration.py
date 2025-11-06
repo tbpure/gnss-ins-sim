@@ -19,11 +19,12 @@ D2R = math.pi/180
 motion_def_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'sim_files/def_motion/'))
 fs = 100.0          # IMU sample frequency
 
-def test_free_integration(file_name: str = 'default.csv'):
+def test_free_integration(save_to_path:str, file_name: str = 'default.csv'):
     '''
     test Sim
     '''
     #### IMU model, typical for IMU381
+    save_to_path = save_to_path + '/' + file_name.removesuffix('.csv')
     imu_err = {
         'gyro_b': np.array([0.0, 0.0, 0.0]),
         'gyro_arw': np.array([0.8, 0.8, 0.8]),  # 陀螺角随机游走
@@ -40,7 +41,7 @@ def test_free_integration(file_name: str = 'default.csv'):
     odo_err = {'scale': 0.999,
                'stdv': 0.1}
     # do not generate GPS and magnetometer data
-    imu = imu_model.IMU(accuracy=imu_err, axis=6, gps=False, odo=True, odo_opt=odo_err)
+    imu = imu_model.IMU(accuracy=imu_err, axis=9, gps=False, odo=True, odo_opt=odo_err)
 
     #### Algorithm
     # Free integration in a virtual inertial frame
@@ -71,16 +72,16 @@ def test_free_integration(file_name: str = 'default.csv'):
                       imu=imu,
                       mode=None,
                       env=None,
-                      algorithm=[algo1])
+                      algorithm=[algo2])
     # run the simulation for 1000 times
     sim.run(1)
     # generate simulation results, summary
     # do not save data since the simulation runs for 1000 times and generates too many results
-    sim.results(err_stats_start=-1, gen_kml=False)
+    sim.results(data_dir=save_to_path, err_stats_start=-1, gen_kml=False)
     # plot postion error
     # sim.plot(['pos'], opt={'pos':'error'})
     sim.plot(['ref_pos'], opt={'ref_pos': '3d'})
     sim.plot(['pos'], opt={'pos': '3d'})
 
 if __name__ == '__main__':
-    test_free_integration('constant_vertical_fall.csv')
+    test_free_integration(save_to_path='./sim_files/saved_file/', file_name='default.csv')

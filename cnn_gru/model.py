@@ -115,3 +115,9 @@ if __name__ == "__main__":
     # 前向传播
     output = model(input_data)
     print("输出形状:", output.shape)  # 应该为 torch.Size([32, 3])
+
+
+class LSTM(nn.Module):
+    def __init__(self, configs):
+        super(LSTM, self).__init__()
+        self.input_size = configs.input_size

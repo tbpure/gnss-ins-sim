@@ -103,11 +103,11 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device, e
     plt.legend()
     plt.show()
 
-def run():
+def run(file_path:str = '/Users/yangyu/PycharmProjects/gnss-ins-sim/cnn_gru/demo_saved_data/drone_sim'):
     pre_len = 10
-    # input.multi.shape:[50, 100, 9, 2400]
+    # input.multi.shape:[50, pre_len, 9, 2400]
     # output.shape: [50, 2400, 3]
-    input_multi, output = get_input_output_data(pre_len, file_path='/Users/yangyu/PycharmProjects/gnss-ins-sim/cnn_gru/demo_saved_data/drone_sim')
+    input_multi, output = get_input_output_data(pre_len, file_path=file_path)
 
     total_samples = input_multi.shape[0]
     indices = torch.randperm(total_samples)
@@ -127,7 +127,7 @@ def run():
         'input_train': input_val,
         'output_train': output_val
     }, save_to_path + '/val_data.pth')
-    print("✅ 已保存训练集数据到 saved_data/train_data.pth")
+    print("✅ 已保存训练集数据到 " + save_to_path + "/train_data.pth")
 
     config = argparse.Namespace(
         input_size=input_multi.shape[2],  # 9
@@ -159,8 +159,8 @@ def run():
     print("training on", device)
 
     # 训练模型
-    train_model(model, train_loader, val_loader, criterion, optimizer, device, epochs=100, save_to_path=save_to_path)
+    train_model(model, train_loader, val_loader, criterion, optimizer, device, epochs=1000, save_to_path=save_to_path)
 
 
 if __name__ == '__main__':
-    run()
+    run(file_path='/Users/yangyu/PycharmProjects/gnss-ins-sim/sim_data_gen/sim_files/saved_file/constant_vertical_fall')
