@@ -153,6 +153,7 @@ class Sim_data(object):
             header_line = self.name + str_unit
         # todo 数据精度改一下？
         fmt = '%f'
+        fmt = '%.15e'
         #### save data and header to .csv files
         if isinstance(self.data, dict):
             for i in self.data:

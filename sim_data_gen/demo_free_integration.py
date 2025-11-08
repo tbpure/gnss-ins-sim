@@ -27,13 +27,13 @@ def test_free_integration(save_to_path:str, file_name: str = 'default.csv'):
     save_to_path = save_to_path + '/' + file_name.removesuffix('.csv')
     imu_err = {
         'gyro_b': np.array([0.0, 0.0, 0.0]),
-        'gyro_arw': np.array([0.8, 0.8, 0.8]),  # 陀螺角随机游走
-        'gyro_b_stability': np.array([15.0, 15.0, 15.0]),  # 零偏稳定性（°/h）
+        'gyro_arw': np.array([0, 0, 0]),  # 陀螺角随机游走
+        'gyro_b_stability': np.array([0, 0, 0]),  # 零偏稳定性（°/h）
         'gyro_b_corr': np.array([200.0, 200.0, 200.0]),
 
         'accel_b': np.array([0.0, 0.0, 0.0]),
-        'accel_vrw': np.array([0.08, 0.08, 0.08]),  # 加速度计速度随机游走
-        'accel_b_stability': np.array([5e-4, 5e-4, 5e-4]),  # 零偏漂移
+        'accel_vrw': np.array([0.0, 0.0, 0.0]),  # 加速度计速度随机游走
+        'accel_b_stability': np.array([0, 0, 0]),  # 零偏漂移
         'accel_b_corr': np.array([200.0, 200.0, 200.0]),
 
         'mag_std': np.array([0.3, 0.3, 0.3])
@@ -77,11 +77,15 @@ def test_free_integration(save_to_path:str, file_name: str = 'default.csv'):
     sim.run(1)
     # generate simulation results, summary
     # do not save data since the simulation runs for 1000 times and generates too many results
-    sim.results(data_dir=save_to_path, err_stats_start=-1, gen_kml=False)
+    # sim.results(data_dir=save_to_path, err_stats_start=-1, gen_kml=False)
     # plot postion error
     # sim.plot(['pos'], opt={'pos':'error'})
     sim.plot(['ref_pos'], opt={'ref_pos': '3d'})
     sim.plot(['pos'], opt={'pos': '3d'})
+    sim.results(save_to_path)
 
 if __name__ == '__main__':
-    test_free_integration(save_to_path='./sim_files/saved_file/', file_name='default.csv')
+    test_free_integration(save_to_path='./sim_files/saved_file/', file_name='motion_def-90deg_turn_long.csv')
+
+
+

@@ -11,6 +11,7 @@ Created on 2017-12-20
 import numpy as np
 from sim_data_gen.gnss_ins_sim.attitude import attitude
 from sim_data_gen.gnss_ins_sim.geoparams import geoparams
+from utils.data_io import get_imu_data_from_path
 
 
 class FreeIntegration(object):
@@ -67,6 +68,12 @@ class FreeIntegration(object):
         Args:
             set_of_input is a tuple or list consistent with self.input
         '''
+        file_path = '/Users/yangyu/PycharmProjects/gnss-ins-sim/sim_data_gen/sim_files/saved_file/motion_def-90deg_turn_long/2025-11-08-19-10-43'
+        # create the algorith object
+        imu_data = get_imu_data_from_path(file_path, ref=False)
+        file_acc = imu_data[:, 0:3]
+        file_gyro = imu_data[:, 3:6]
+
         self.run_times += 1
         # get input
         if set_of_input[0] == 0:
@@ -74,6 +81,9 @@ class FreeIntegration(object):
         self.dt = 1.0 / set_of_input[1]
         gyro = set_of_input[2]
         accel = set_of_input[3]
+
+        gyro_diff = gyro - file_gyro
+        accel_diff = accel - file_acc
         n = accel.shape[0]
         # Free IMU integration
         self.att = np.zeros((n, 3))
