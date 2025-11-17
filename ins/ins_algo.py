@@ -8,6 +8,7 @@ class INS(object):
     def __init__(self, imu_data, gps_data, init_vel, init_euler, dt = 0.01):
         # gps_data：[len, 3] 经纬度
         self.imu_data = imu_data
+        # todo: 后续的数据需要在第一列时间戳，index需要从1开始
         self.dt = dt
 
         self.euler = init_euler

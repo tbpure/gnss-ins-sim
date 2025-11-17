@@ -6,8 +6,8 @@ from ins_algo import INS
 from utils.unit_transfer import deg2rad
 
 
-file_path = '/Users/yangyu/PycharmProjects/gnss-ins-sim/sim_data_gen/sim_files/saved_file/motion_def-90deg_turn_long/2025-11-08-20-41-11'
-imu_data = get_imu_data_from_path(file_path, ref=True)
+file_path = "C:\\Users\\16142\\PycharmProjects\\gnss-ins-sim\\sim_data_gen\\sim_files\\saved_file\\motion_def-90deg_turn_long\\2025-11-17-19-00-44"
+imu_data = get_imu_data_from_path(file_path, ref=False)
 imu_data[:, 3:6] = deg2rad(imu_data[:, 3:6])
 gps_data = get_gps_data_from_path(file_path, ref=True)
 att_data = get_att_data_from_path(file_path, ref=True)

@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 
+from utils.matrix_utils import skew
+
 matplotlib.use("TkAgg")
 
 # ============================================================
@@ -16,13 +18,6 @@ OMEGA_E = 7.292115e-5  # 地球自转角速度 rad/s
 # ============================================================
 # 工具函数
 # ============================================================
-
-def skew(v):
-    """ 反对称矩阵 """
-    return np.array([[0, -v[2], v[1]],
-                     [v[2], 0, -v[0]],
-                     [-v[1], v[0], 0]])
-
 
 def eye(n):
     return np.eye(n)
@@ -65,6 +60,10 @@ IDX_SA = slice(18, 21) # 加速度计比例因子误差
 def build_F(Cnb, acc, gyro, vn, pos, earth, imu_params):
     """
     构造完整 21x21 F 矩阵
+    acc：载体系
+    gyro：载体系
+    vn：导航系
+    pos：导航系
     """
 
     F = np.zeros((STATE_SIZE, STATE_SIZE))
@@ -81,13 +80,12 @@ def build_F(Cnb, acc, gyro, vn, pos, earth, imu_params):
     # ----------------------------------------
     # F_rr 位置误差微分
     # ----------------------------------------
-    # Frr = np.array([
-    #     [-vD / (RM + h), 0, vN / (RM + h)],
-    #     [vE * np.tan(phi_lat) / (RN + h), -(vD - vN * np.tan(phi_lat)) / (RN + h), vE / (RN + h)],
-    #     [0, 0, 0]
-    # ])
+    Frr = np.array([
+        [-vD / (RM + h), 0, vN / (RM + h)],
+        [vE * np.tan(phi_lat) / (RN + h), -(vD - vN * np.tan(phi_lat)) / (RN + h), vE / (RN + h)],
+        [0, 0, 0]
+    ])
     # 简化 F_rr, 假设东北天坐标系下位置误差的微分
-    Frr = np.zeros((3, 3))  # 在简单仿真中，此项影响小，暂设为0
 
     F[IDX_DR, IDX_DR] = Frr
     F[IDX_DR, IDX_DV] = eye(3)
@@ -238,7 +236,7 @@ def ekf_gnss_ins(ins_data_stream, gnss_data):
         # 修正：Qk = G * q * G.T * dt (一阶近似)
         Qk = (G @ q @ G.T) * dt
 
-        # 时间更新
+        # 状态更新
         x = Phi @ x
         P = Phi @ P @ Phi.T + Qk
 

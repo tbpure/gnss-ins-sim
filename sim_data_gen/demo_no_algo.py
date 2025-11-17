@@ -35,21 +35,21 @@ def test_path_gen(save_to_dir:str='', target_file_path:str='', file_name:str='mo
     '''
     #### choose a built-in IMU model, typical for IMU381
     imu_err = 'mid-accuracy'
-    imu_err = {
-        'gyro_b': np.array([0.0, 0.0, 0.0]),
-        'gyro_arw': np.array([0.8, 0.8, 0.8]),  # 陀螺角随机游走
-        'gyro_b_stability': np.array([15.0, 15.0, 15.0]),  # 零偏稳定性（°/h）
-        'gyro_b_corr': np.array([200.0, 200.0, 200.0]),
-
-        'accel_b': np.array([0.0, 0.0, 0.0]),
-        'accel_vrw': np.array([0.08, 0.08, 0.08]),  # 加速度计速度随机游走
-        'accel_b_stability': np.array([5e-4, 5e-4, 5e-4]),  # 零偏漂移
-        'accel_b_corr': np.array([200.0, 200.0, 200.0]),
-
-        'mag_std': np.array([0.3, 0.3, 0.3])
-    }
+    # imu_err = {
+    #     'gyro_b': np.array([0.0, 0.0, 0.0]),
+    #     'gyro_arw': np.array([0.8, 0.8, 0.8]),  # 陀螺角随机游走
+    #     'gyro_b_stability': np.array([15.0, 15.0, 15.0]),  # 零偏稳定性（°/h）
+    #     'gyro_b_corr': np.array([200.0, 200.0, 200.0]),
+    #
+    #     'accel_b': np.array([0.0, 0.0, 0.0]),
+    #     'accel_vrw': np.array([0.08, 0.08, 0.08]),  # 加速度计速度随机游走
+    #     'accel_b_stability': np.array([5e-4, 5e-4, 5e-4]),  # 零偏漂移
+    #     'accel_b_corr': np.array([200.0, 200.0, 200.0]),
+    #
+    #     'mag_std': np.array([0.3, 0.3, 0.3])
+    # }
     # generate GPS and magnetometer data
-    imu = imu_model.IMU(accuracy=imu_err, axis=9, gps=True)
+    imu = imu_model.IMU(axis=9, gps=True)
 
     #### start simulation
     sim = ins_sim.Sim([fs, fs_gps, fs_mag],
