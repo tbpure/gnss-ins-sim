@@ -40,7 +40,7 @@ def get_imu_data_from_path(path, ref:bool = False):
     data_dict = get_data_from_path(path, file_list, ref = ref)
     return concat_data_from_dict(data_dict)
 
-def get_gps_data_from_path(path, ref:bool = False):
+def get_gnss_data_from_path(path, ref:bool = False):
     file_list = ['gps']
     if ref == True:
         file_list = ['pos']

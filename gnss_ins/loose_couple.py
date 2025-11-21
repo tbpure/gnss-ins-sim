@@ -1,8 +1,13 @@
+from pandas.core.methods.describe import select_describe_func
+
 from KF.ekf_base import EKF
 from ins.ins_algo import INS
 import numpy as np
 
+from utils.data_io import get_imu_data_from_path, get_gnss_data_from_path, get_att_data_from_path, \
+    get_ref_data_from_path
 from utils.matrix_utils import skew
+from utils.unit_transfer import deg2rad
 
 STATUS_DIMENSION = 21
 
@@ -14,29 +19,16 @@ IDX_BA = slice(12, 15) # 加速度计零偏误差
 IDX_SG = slice(15, 18) # 陀螺比例因子误差
 IDX_SA = slice(18, 21) # 加速度计比例因子误差
 
-
-def build_G(Cnb):
-    # 过程噪声分布矩阵 G
-    G = np.zeros((STATUS_DIMENSION, 18))
-    G[IDX_DV, 0:3] = Cnb
-    G[IDX_PHI, 3:6] = Cnb
-    G[IDX_BG, 6:9] = np.eye(3)
-    G[IDX_BA, 9:12] = np.eye(3)
-    G[IDX_SG, 12:15] = np.eye(3)
-    G[IDX_SA, 15:18] = np.eye(3)
-    return G
-
-
 class LooseCouple:
-    def __init__(self, imu_params, gnss_params, imu_data, gnss_data, init_vel, init_euler, dt = 0.01):
+    def __init__(self, imu_params, imu_data, gnss_data, init_vel, init_euler):
         self.dt = 0.01
         self.imu_params = imu_params
-        self.gnss_params = gnss_params
         self.imu_data = imu_data
         self.gnss_data = gnss_data
         self.ins = INS(imu_data, gnss_data, init_vel, init_euler)
         ekf = EKF(STATUS_DIMENSION)
 
+        # todo 具体数值设置？
         # 初始化状态和状态协方差矩阵
         P = np.eye(STATUS_DIMENSION)
         # 惯导位置误差
@@ -58,7 +50,7 @@ class LooseCouple:
         self.gyro_std = imu_params["gyro_std"]
         self.accel_std = imu_params["accel_std"]
 
-        # 比例因子
+        # 比例因子 int
         self.gyro_scale = imu_params["gyro_scale"]
         self.accel_scale = imu_params["accel_scale"]
 
@@ -158,16 +150,16 @@ class LooseCouple:
     def run(self):
         # 初始化
         imu_params = self.imu_params.copy()
-        gnss_params = self.gnss_params.copy()
         gnss_data = self.gnss_data.copy()
         ins_data = self.imu_data.copy()
+
         x = np.zeros((STATUS_DIMENSION, 1))
         P = np.eye(STATUS_DIMENSION)
         P[IDX_DR, IDX_DR] *= 1.0 ** 2
         P[IDX_DV, IDX_DV] *= 0.1 ** 2
         P[IDX_PHI, IDX_PHI] *= np.deg2rad(0.1) ** 2
         P[IDX_BG, IDX_BG] *= np.deg2rad(0.1 / 3600) ** 2
-        # todo
+        # todo 一般情况下加速度计零偏初始化
         P[IDX_BA, IDX_BA] *= (1e-3 * self.imu_params["G_CONST"]) ** 2
         imu_params_q = self.imu_params.copy()
         imu_params_q["ARW"] = self.imu_params["ARW"] / np.sqrt(1 / 0.01)  # 假设 ARW/VRW 单位是 /sqrt(s)
@@ -185,10 +177,8 @@ class LooseCouple:
 
         results = []
         gnss_index = 0
-
-        for k, imu in enumerate(ins_data):
-            dt = imu["dt"]
-
+        dt = self.dt
+        for _, imu in enumerate(ins_data):
             # EKF 使用的输入：来自漂移的 INS 和带噪声的 IMU 读数
             acc = imu["acc_measured"]  # 带噪声的比力
             gyro = imu["gyro_measured"]  # 带噪声的角速度
@@ -201,7 +191,7 @@ class LooseCouple:
             # ① 预测：IMU 100Hz 更新
             # =====================================
             F = self.build_F(Cnb, acc, gyro, vn, pos, earth, imu_params)
-            G = build_G(Cnb)
+            G = self.build_G(Cnb)
 
             Phi = np.eye(STATUS_DIMENSION) + F * dt
 
@@ -263,4 +253,42 @@ class LooseCouple:
             results.append(x.copy())
 
         return results
+
+
+if __name__ == "__main__":
+    file_path = "C:\\Users\\16142\\PycharmProjects\\gnss-ins-sim\\sim_data_gen\\sim_files\\saved_file\\motion_def-90deg_turn_long\\2025-11-17-19-00-44"
+    imu_params = {
+        "G_CONST": 0.1,
+        "ARW": 0.1,
+        "VRW": 0.1,
+        "gyro_scale": 1.0,
+        "accel_scale": 1.0,
+        "gyro_std": 0.1,
+        "accel_std": 0.1,
+        "gyro_bias": 0.1,
+        "accel_bias": 0.1,
+        "sigma_bg": 0.1,
+        "sigma_ba": 0.1,
+        "sigma_sg": 0.1,
+        "sigma_sa": 0.1,
+        "Tgb": 0.01,
+        "Tab": 0.01,
+        "Tgs": 0.01,
+        "Tas": 0.01,
+    }
+    gnss_params = {
+        "pos_std": 1.0,
+        "vel_std": 1.0,
+    }
+    imu_data = get_imu_data_from_path(file_path, ref=False)
+    imu_data[:, 3:6] = np.deg2rad(imu_data[:, 3:6])
+    gps_data = get_gnss_data_from_path(file_path, ref=True)
+    att_data = get_att_data_from_path(file_path, ref=True)
+    ref_vel = get_ref_data_from_path(file_path, ['vel'])
+    if gps_data.shape[1] != 3:
+        init_vel_b = gps_data[:, :3]
+    else:
+        init_vel_b = ref_vel['vel'][0, 0:3]
+    loose = LooseCouple(imu_params, imu_data, gps_data, init_vel_b, deg2rad(att_data[0][0:3]))
+    loose.run()
 
