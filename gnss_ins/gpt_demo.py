@@ -1,11 +1,10 @@
 # gpt_demo_fixed_v2.py
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib
 
 from utils.matrix_utils import skew
 
-matplotlib.use("TkAgg")
+# matplotlib.use("TkAgg")
 
 # ============================================================
 # 常量
@@ -179,13 +178,13 @@ def ekf_gnss_ins(ins_data_stream, gnss_data):
         "ARW": 0.01,  # 角度随机游走(m/s^2) / sqrt(Hz)
         "VRW": 0.001,  # 加速度随机游走(rad/s) / sqrt(Hz)
         # t表示马尔可夫过程的时间常数
-        '''
-        t表示马尔可夫过程的时间常数
-        bg为陀螺仪零漂
-        ba为加速度计零漂
-        sg为陀螺仪比例因子
-        sa为加速度计比例因子
-        '''
+        # '''
+        # t表示马尔可夫过程的时间常数
+        # bg为陀螺仪零漂
+        # ba为加速度计零漂
+        # sg为陀螺仪比例因子
+        # sa为加速度计比例因子
+        # '''
 
         "Tgb": 3600.0, "Tab": 3600.0, "Tgs": 3600.0, "Tas": 3600.0,
         "sigma_bg": np.deg2rad(0.05 / 3600),  # 0.05 deg/hr
@@ -311,13 +310,230 @@ def plot_trajectory(true_pos, ins_pos, ekf_pos, gnss_pos=None):
     plt.grid(True)
     plt.legend()
     plt.axis('equal')
-    plt.tight_layout()
+    # plt.tight_layout()
     plt.show()
 
 
 # ============================================================
 # 仿真主程序 (已重写)
 # ============================================================
+
+
+def gpt_test_data():
+    # 仿真参数
+    T = 120.0
+    dt_imu = 0.01
+    N = int(T / dt_imu)
+
+    # 仿真地球参数
+    LATITUDE_RAD = np.deg2rad(45.0)  # 假设纬度
+    g_n = np.array([0, 0, -G_CONST])  # n系重力 (北东地 NED 坐标系)
+    omega_ie_n = np.array([0, OMEGA_E * np.cos(LATITUDE_RAD), OMEGA_E * np.sin(LATITUDE_RAD)])
+
+    # ----------------------------------------------------
+    # 1. 生成地面真值 (Ground Truth)
+    # ----------------------------------------------------
+    true_pos = np.zeros((N, 3))
+    true_vel = np.zeros((N, 3))
+    true_Cnb = np.zeros((N, 3, 3))
+    true_acc_n = np.zeros((N, 3))
+    true_wb_n = np.zeros((N, 3))  # n系下的角速度 (omega_nb_n)
+
+    # 轨迹：前半段直行，后半段匀角速度转弯
+    yaw = 0.0
+    turn_rate = np.deg2rad(0.5)  # 0.5 deg/s
+
+    for k in range(N):
+        t = k * dt_imu
+        if t < T / 3:
+            vx, vy = 3.0, 0.0
+            ax, ay = 0.0, 0.0
+            yaw_rate = 0.0
+        elif t < (T * 2 / 3):
+            # 匀速转弯
+            yaw_rate = turn_rate
+            yaw += yaw_rate * dt_imu
+            vx = 3.0 * np.cos(yaw)
+            vy = 3.0 * np.sin(yaw)
+            # 计算向心加速度 a = v * w
+            ax = -vy * yaw_rate
+            ay = vx * yaw_rate
+        else:
+            # 再次直行
+            yaw_rate = 0.0
+            vx = 3.0 * np.cos(yaw)
+            vy = 3.0 * np.sin(yaw)
+            ax, ay = 0.0, 0.0
+
+        true_vel[k] = [vx, vy, 0.0]
+        true_acc_n[k] = [ax, ay, 0.0]
+        true_wb_n[k] = [0, 0, yaw_rate]
+
+        if k > 0:
+            true_pos[k] = true_pos[k - 1] + true_vel[k] * dt_imu
+
+        true_Cnb[k] = euler_to_dcm(0.0, 0.0, yaw).T  # NED -> Body, Cnb (e.g., ZYX yaw-pitch-roll)
+        # 注意：euler_to_dcm 假设是 n->b, 需确认
+        # 假设 euler_to_dcm(0,0,yaw) 是 C_b^n (b到n)
+        # 那么 C_n^b (n到b) 应该是 C_b^n.T
+        # 我们的 Cnb 是 n->b (IMU坐标系)
+
+        # 修正：使用 euler_to_dcm (0,0,yaw) 作为 C_n^b
+        # C_n^b = euler_to_dcm(0.0, 0.0, yaw) # Cnb = ZYX(yaw, pitch, roll)
+
+        # 修正：原 euler_to_dcm 是 C_b^n (b 到 n)，坐标系 (x,y,z) 对应 (roll, pitch, yaw)
+        # 我们用 NED (北东地)，yaw 是绕 D 轴转
+        # 假设使用 北东地 (NED) 坐标系， yaw 是绕 D (Z) 轴
+        # C_n^b (n系到b系)
+        roll, pitch = 0.0, 0.0
+        cr, sr = np.cos(roll), np.sin(roll)
+        cp, sp = np.cos(pitch), np.sin(pitch)
+        cy, sy = np.cos(yaw), np.sin(yaw)
+
+        # ZYX (Yaw-Pitch-Roll) C_n^b
+        Cnb = np.array([
+            [cp * cy, cp * sy, -sp],
+            [sr * sp * cy - cr * sy, sr * sp * sy + cr * cy, sr * cp],
+            [cr * sp * cy + sr * sy, cr * sp * sy - sr * cy, cr * cp]
+        ])
+        true_Cnb[k] = Cnb
+
+    # ----------------------------------------------------
+    # 2. 生成带噪声的 IMU 传感器读数
+    # ----------------------------------------------------
+    # 传感器噪声参数 (用于生成数据)
+    gyro_bias = np.deg2rad(np.array([0.5, -0.3, 0.2]) / 3600)  # 0.5 deg/hr 零偏
+    acc_bias = np.array([-0.5, 0.8, -0.2]) * 1e-3 * G_CONST  # 1 mG 零偏
+
+    ARW_std = 0.01 / np.sqrt(dt_imu)  # (m/s^2)/sqrt(Hz) -> m/s^2
+    VRW_std = 0.001 / np.sqrt(dt_imu)  # (rad/s)/sqrt(Hz) -> rad/s
+
+    imu_sensor_readings = []
+
+    for k in range(N):
+        Cnb = true_Cnb[k]
+        Cbn = Cnb.T
+
+        # --- 真实比力 ---
+        # fb = C_n^b * (a_n - g_n)
+        fb_true = Cnb @ (true_acc_n[k] - g_n)
+
+        # --- 真实角速度 ---
+        # omega_ib_b = omega_in_b + omega_nb_b
+        # omega_in_b = C_n^b * omega_in_n (omega_in_n = omega_ie_n + omega_en_n)
+        # (简化：忽略 omega_en_n)
+        omega_in_b = Cnb @ omega_ie_n
+        # omega_nb_b = C_n^b * omega_nb_n
+        omega_nb_b = Cnb @ true_wb_n[k]
+
+        wb_true = omega_in_b + omega_nb_b
+
+        # --- 添加噪声和零偏 ---
+        acc_noise = np.random.randn(3) * ARW_std
+        gyro_noise = np.random.randn(3) * VRW_std
+
+        acc_measured = fb_true + acc_bias + acc_noise
+        gyro_measured = wb_true + gyro_bias + gyro_noise
+
+        imu_sensor_readings.append({
+            "acc_measured": acc_measured,
+            "gyro_measured": gyro_measured
+        })
+
+    # ----------------------------------------------------
+    # 3. 模拟 "INS Only" 纯惯导解算 (产生漂移)
+    # ----------------------------------------------------
+    ins_pos = np.zeros_like(true_pos)
+    ins_vel = np.zeros_like(true_vel)
+    ins_Cnb = np.zeros_like(true_Cnb)
+
+    # 初始状态 (假设有很小的初始误差)
+    ins_pos[0] = true_pos[0] + np.array([0.1, -0.1, 0.0])
+    ins_vel[0] = true_vel[0] + np.array([0.01, -0.01, 0.0])
+    ins_Cnb[0] = true_Cnb[0]  # 假设初始对准完美
+
+    # EKF 输入流 (包含漂移的 INS 和 IMU 读数)
+    ekf_input_stream = []
+
+    for k in range(N):
+        # 准备 EKF 输入数据
+        ekf_input_stream.append({
+            "timestamp": k * dt_imu,
+            "dt": dt_imu,
+            # IMU 原始读数
+            "acc_measured": imu_sensor_readings[k]["acc_measured"],
+            "gyro_measured": imu_sensor_readings[k]["gyro_measured"],
+            # 漂移的 INS 状态 (来自上一步 k-1)
+            "Cnb_ins": ins_Cnb[k - 1] if k > 0 else ins_Cnb[0],
+            "vel_ins": ins_vel[k - 1] if k > 0 else ins_vel[0],
+            "pos_ins": ins_pos[k - 1] if k > 0 else ins_pos[0],
+            # 地球参数
+            "earth": {
+                "RM": R_E, "RN": R_E,
+                "omega_in_n": omega_ie_n,
+                "lat": LATITUDE_RAD
+            },
+            "lever_arm": np.zeros(3),
+        })
+
+        if k == N - 1: break  # 最后一步不需要更新
+
+        # --- INS 积分 (k -> k+1) ---
+
+        # 使用 k 时刻的 IMU 读数 和 k 时刻的 INS 状态
+        fb = imu_sensor_readings[k]["acc_measured"]
+        wb = imu_sensor_readings[k]["gyro_measured"]
+
+        Cnb_k = ins_Cnb[k]
+        vel_k = ins_vel[k]
+        pos_k = ins_pos[k]
+
+        # (1) 姿态更新 (C_n^b)
+        # 忽略 omega_in_n 的旋转 (让它漂移，EKF 会估计这个)
+        # dCnb = Cnb_k @ skew(wb) * dt_imu
+        # Cnb_k_plus_1 = Cnb_k + dCnb
+
+        # (更精确的姿态更新)
+        d_theta = wb * dt_imu
+        Cnb_k_plus_1 = Cnb_k @ (eye(3) + skew(d_theta))
+        # (还应减去 Cnb * omega_in_n * dt ... 但我们让它漂移)
+
+        ins_Cnb[k + 1] = Cnb_k_plus_1
+
+        # (2) 速度更新 (n系)
+        # f_n = C_b^n * f_b = Cnb.T * fb
+        f_n = Cnb_k.T @ fb
+
+        # a_n = f_n + g_n - (2*omega_ie + omega_en) x v_n
+        # (简化：INS 循环不补偿科里奥利力，让它漂移)
+        a_n = f_n + g_n
+
+        ins_vel[k + 1] = vel_k + a_n * dt_imu
+
+        # (3) 位置更新
+        ins_pos[k + 1] = pos_k + ins_vel[k + 1] * dt_imu
+
+    # ----------------------------------------------------
+    # 4. 生成稀疏的 GNSS 测量
+    # ----------------------------------------------------
+    gnss_data = []
+    gnss_sparse = []
+    gnss_noise_pos_std = 1.0  # 1.0 米
+    gnss_noise_vel_std = 0.3  # 0.3 m/s
+
+    for k in range(0, N, int(1.0 / dt_imu)):
+        pos_noise = np.random.randn(3) * gnss_noise_pos_std
+        vel_noise = np.random.randn(3) * gnss_noise_vel_std
+
+        gnss_data.append({
+            "timestamp": k * dt_imu,
+            "pos": true_pos[k] + pos_noise,
+            "vel": true_vel[k] + vel_noise
+        })
+        gnss_sparse.append(true_pos[k] + pos_noise)
+    gnss_sparse = np.array(gnss_sparse)
+    return gnss_data, ekf_input_stream, gnss_sparse
+
 
 if __name__ == "__main__":
     # 仿真参数
@@ -564,4 +780,20 @@ if __name__ == "__main__":
     # ----------------------------------------------------
     # 7. 绘图
     # ----------------------------------------------------
-    plot_trajectory(true_pos, ins_pos, ekf_pos, gnss_pos=gnss_sparse)
+    plt.figure(figsize=(9, 6))
+
+    plt.plot(true_pos[:, 0], true_pos[:, 1], 'k-', linewidth=3, label='True')
+    plt.plot(ins_pos[:, 0], ins_pos[:, 1], 'r--', alpha=0.8, label='INS Only (Drifting)')
+    plt.plot(ekf_pos[:, 0], ekf_pos[:, 1], 'b-', linewidth=2, label='EKF Fused')
+
+    if gnss_sparse is not None:
+        plt.scatter(gnss_sparse[:, 0], gnss_sparse[:, 1], c='g', s=20, label='GNSS (1Hz)', zorder=5)
+
+    plt.xlabel("X (m)")
+    plt.ylabel("Y (m)")
+    plt.title("Trajectory Comparison (True / INS / EKF)")
+    plt.grid(True)
+    plt.legend()
+    plt.axis('equal')
+    # plt.tight_layout()
+    plt.show()

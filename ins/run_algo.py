@@ -5,7 +5,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 from sim_data_gen.demo_algorithms import free_integration
-from utils.data_io import get_imu_data_from_path, get_gps_data_from_path, get_data_from_path
+from utils.data_io import get_imu_data_from_path, get_gnss_data_from_path, get_data_from_path
 from utils.unit_transfer import deg2rad
 
 # globals
@@ -26,7 +26,7 @@ file_path = '/Users/yangyu/PycharmProjects/gnss-ins-sim/sim_data_gen/sim_files/s
 # create the algorith object
 algo = free_integration.FreeIntegration(ini_pos_vel_att)
 imu_data = get_imu_data_from_path(file_path, ref=False)
-gps = get_gps_data_from_path(file_path, ref=True)
+gps = get_gnss_data_from_path(file_path, ref=True)
 acc = imu_data[:, 0:3]
 gyro_degree = imu_data[:, 3:6]
 gyro = deg2rad(gyro_degree)

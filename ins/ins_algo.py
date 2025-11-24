@@ -14,11 +14,10 @@ class INS(object):
         self.euler = init_euler
         self.c_bn = attitude.euler2dcm(self.euler)
 
-        self.init_lla = gps_data[0][0:3]
+        self.position = gps_data[0][0:3]
+        self.init_lla = geoparams.ecef2lla(self.position)
         self.vel_b = self.c_bn.dot(init_vel)
         earth_param = geoparams.geo_param(self.init_lla)
-        # self.position = geoparams.lla2ecef(self.init_lla)
-        self.position = self.init_lla
         self.vel = init_vel
         self.g_n = np.array([0.0, 0.0, earth_param[2]])
         self.started = False
@@ -26,8 +25,11 @@ class INS(object):
         self.out_put = []
         self.index = 0
         self.att = self.imu_data[self.index][0:3]
+        self.acc = np.array([0.0, 0.0, 0.0])
+        self.gyro = np.array([0.0, 0.0, 0.0])
 
-    def step(self, imu_data):
+    def step(self):
+        imu_data = self.imu_data
         if self.index == 0:
             self.out_put.append(self.position)
         else:
@@ -43,6 +45,8 @@ class INS(object):
             # 使用上一时刻的速度更新位置
             self.position = self.position + self.vel * self.dt
             self.out_put.append(self.position)
+            self.acc = acc
+            self.gyro = gyro
         self.index += 1
 
 
