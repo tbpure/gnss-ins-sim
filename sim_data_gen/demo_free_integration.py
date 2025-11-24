@@ -82,10 +82,10 @@ def test_free_integration(save_to_path:str, file_name: str = 'default.csv'):
     # sim.plot(['pos'], opt={'pos':'error'})
     sim.plot(['ref_pos'], opt={'ref_pos': '3d'})
     sim.plot(['pos'], opt={'pos': '3d'})
-    sim.results(save_to_path)
+    # sim.results(save_to_path)
 
 if __name__ == '__main__':
-    test_free_integration(save_to_path='./sim_files/saved_file/', file_name='motion_def-90deg_turn_long.csv')
+    test_free_integration(save_to_path='./sim_files/saved_file/')
 
 
 

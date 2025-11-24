@@ -4,6 +4,7 @@ from KF.ekf_base import EKF
 from ins.ins_algo import INS
 import numpy as np
 
+from ins.run_algo import D2R
 from sim_data_gen.gnss_ins_sim.attitude import attitude
 from sim_data_gen.gnss_ins_sim.geoparams import geoparams
 from utils.data_io import get_imu_data_from_path, get_gnss_data_from_path, get_att_data_from_path, \
@@ -82,7 +83,12 @@ def build_earth(lat_rad, h, vn):
 
 
 class LooseCouple:
-    def __init__(self, imu_params, imu_data, gnss_data, init_vel, init_euler):
+    def __init__(self, imu_params, imu_data, gnss_data, init_vel, init_euler, save=None):
+        if save is None:
+            self.save = []
+        else:
+            self.save = save
+        self.saved = {}
         self.dt = 0.01
         self.imu_params = imu_params
         self.imu_data = imu_data
@@ -216,7 +222,7 @@ class LooseCouple:
 
     def run(self):
         # 初始化
-        saved = self.saved
+        saved = {}
         ins = self.ins
         imu_params = self.imu_params.copy()
         gnss_data = self.gnss_data.copy()
@@ -327,7 +333,8 @@ class LooseCouple:
                 K = P @ H_vel.T @ np.linalg.inv(S)
                 x = x + K @ y
                 P = (np.eye(STATUS_DIMENSION) - K @ H_vel) @ P
-
+                if 'P' in self.save:
+                    saved.setdefault('P', []).append(P)
 
                 # --- 状态反馈 (可选，若 INS 循环在外部) ---
                 # 此处 EKF 是外部运行的，我们只保存误差状态 x
@@ -335,7 +342,7 @@ class LooseCouple:
 
             # 保存结果（每个 IMU 时刻都保存）
             results.append(x.copy())
-
+        self.saved = saved
         return results
 
 def test():
@@ -344,25 +351,30 @@ def test():
 
 
 if __name__ == "__main__":
-    file_path = "/Users/yangyu/PycharmProjects/gnss-ins-sim/sim_data_gen/sim_files/saved_file/motion_def-90deg_turn_long/2025-11-10-20-00-21"
+    file_path = "/Users/yangyu/PycharmProjects/gnss-ins-sim/sim_data_gen/sim_files/saved_file/default/2025-11-24-16-26-53"
     imu_params = {
         "G_CONST": 9.8,
-        "ARW": 0.1,
-        "VRW": 0.1,
+        # 随机游走 (PSD)
+        "ARW": 2.0e-3 * D2R / 60,  # rad/sqrt(s)
+        "VRW": 0.01,  # m/s^2/sqrt(s)，根据加速度计噪声设
+        # 传感器零偏
+        "gyro_bias": 0.0,
+        "accel_bias": 0.0,
+        "sigma_bg": 0.1 * D2R / 3600,  # rad/s/sqrt(s) 零偏漂移
+        "sigma_ba": 1e-3,  # m/s^2/sqrt(s)
+        # 比例因子
         "gyro_scale": 1.0,
         "accel_scale": 1.0,
-        "gyro_std": 0.1,
-        "accel_std": 0.1,
-        "gyro_bias": 0.1,
-        "accel_bias": 0.1,
-        "sigma_bg": 0.1,
-        "sigma_ba": 0.1,
-        "sigma_sg": 0.1,
-        "sigma_sa": 0.1,
-        "Tgb": 0.01,
-        "Tab": 0.01,
-        "Tgs": 0.01,
-        "Tas": 0.01,
+        "sigma_sg": 0.001,
+        "sigma_sa": 0.001,
+        # 一阶马尔科夫过程相关时间
+        "Tgb": 100.0,
+        "Tab": 100.0,
+        "Tgs": 100.0,
+        "Tas": 100.0,
+        # 测量标准差
+        "gyro_std": 0.0,
+        "accel_std": 0.0,
     }
     gnss_params = {
         "pos_std": 1.0,
@@ -378,9 +390,26 @@ if __name__ == "__main__":
         init_vel_b = gps_data[0, 3:6]
     else:
         init_vel_b = ref_vel['vel'][0, 0:3]
-    loose = LooseCouple(imu_params, imu_data, gps_data, init_vel_b, deg2rad(att_data[0][0:3]))
+    loose = LooseCouple(imu_params, imu_data, gps_data, init_vel_b, deg2rad(att_data[0][0:3]), save=['P'])
 
     ekf_states = loose.run()
+    for k in loose.saved:
+        value = loose.saved[k]
+        mat_list = np.array(value)  # shape = (T, 21, 21)
+        T = mat_list.shape[0]
+
+        plt.figure(figsize=(12, 8))
+
+        for i in range(21):
+            for j in range(21):
+                plt.plot(range(T), mat_list[:, i, j], alpha=0.5)
+
+        plt.title(f"Element-wise Change For {k}")
+        plt.xlabel("Time Step")
+        plt.ylabel("Value")
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
     ins_result = loose.ins.out_put
     ekf_pos = np.zeros_like(ins_result)
     for i in range(len(ekf_states)):
@@ -393,7 +422,7 @@ if __name__ == "__main__":
     plt.figure(figsize=(8, 8), dpi=120)
 
     plt.plot(ekf_pos[:, 1], ekf_pos[:, 0], label="EKF", linewidth=2)
-    plt.plot(ins_result[:, 1], ins_result[:, 0], label="INS", linewidth=2, alpha=0.8)
+    # plt.plot(ins_result[:, 1], ins_result[:, 0], label="INS", linewidth=2, alpha=0.8)
     plt.plot(gps_data[:, 1], gps_data[:, 0], label="GPS", linestyle='--', linewidth=1.8, alpha=0.9)
     plt.plot(ref_pos[:, 1], ref_pos[:, 0], label="Reference", linewidth=1.5)
 

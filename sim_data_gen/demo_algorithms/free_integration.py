@@ -68,11 +68,11 @@ class FreeIntegration(object):
         Args:
             set_of_input is a tuple or list consistent with self.input
         '''
-        file_path = '/Users/yangyu/PycharmProjects/gnss-ins-sim/sim_data_gen/sim_files/saved_file/motion_def-90deg_turn_long/2025-11-08-19-10-43'
-        # create the algorith object
-        imu_data = get_imu_data_from_path(file_path, ref=False)
-        file_acc = imu_data[:, 0:3]
-        file_gyro = imu_data[:, 3:6]
+        # file_path = '/Users/yangyu/PycharmProjects/gnss-ins-sim/sim_data_gen/sim_files/saved_file/motion_def-90deg_turn_long/2025-11-08-19-10-43'
+        # # create the algorith object
+        # imu_data = get_imu_data_from_path(file_path, ref=False)
+        # file_acc = imu_data[:, 0:3]
+        # file_gyro = imu_data[:, 3:6]
 
         self.run_times += 1
         # get input
@@ -82,8 +82,8 @@ class FreeIntegration(object):
         gyro = set_of_input[2]
         accel = set_of_input[3]
 
-        gyro_diff = gyro - file_gyro
-        accel_diff = accel - file_acc
+        # gyro_diff = gyro - file_gyro
+        # accel_diff = accel - file_acc
         n = accel.shape[0]
         # Free IMU integration
         self.att = np.zeros((n, 3))
