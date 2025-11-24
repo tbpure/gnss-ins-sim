@@ -41,6 +41,19 @@ class LSTMModel(nn.Module):
         output = self.fc(last_out)  # (batch, 6)
         return output
 
+
+class WeightedMAE(nn.Module):
+    def __init__(self, weights):
+        super().__init__()
+        # 确保是 tensor
+        self.weights = torch.tensor(weights, dtype=torch.float32)
+
+    def forward(self, y_pred, y_true):
+        # 自动 broadcast，假设 shape = (batch, dim)
+        loss = torch.abs(y_pred - y_true) * self.weights.to(y_pred.device)
+        return loss.mean()
+
+
 class IMUGNSSDataset(Dataset):
     def __init__(self, file_list, step):
         self.features = []
@@ -79,6 +92,7 @@ def train_model(train_loader, input_dim, epochs=10, lr=1e-3, device="mpu"):
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.MSELoss()
 
+
     for epoch in range(epochs):
         model.train()
         total_loss = 0
@@ -88,6 +102,8 @@ def train_model(train_loader, input_dim, epochs=10, lr=1e-3, device="mpu"):
             y = y.to(device)
 
             pred = model(x)
+            signals_weights_tensor = np.array([3.8, 3.9, 7.6, 1, 1, 5.5])
+            criterion = WeightedMAE(signals_weights_tensor)
             loss = criterion(pred, y)
 
             optimizer.zero_grad()
