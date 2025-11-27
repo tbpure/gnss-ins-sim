@@ -24,7 +24,6 @@ class INS(object):
         self.freq_ratio = len(imu_data) / len(gps_data)
         self.out_put = []
         self.index = 0
-        self.att = self.imu_data[self.index][0:3]
         self.acc = np.array([0.0, 0.0, 0.0])
         self.gyro = np.array([0.0, 0.0, 0.0])
 
@@ -37,9 +36,9 @@ class INS(object):
             acc = imu_data[self.index - 1][0:3]
             gyro = imu_data[self.index - 1][3:6]
             self.euler = attitude.euler_update_zyx(self.euler, gyro, self.dt)
+            self.c_bn = attitude.euler2dcm(self.euler)
             self.vel_b = self.vel_b + (acc + c_bn.dot(self.g_n)) * self.dt -\
                 attitude.cross3(gyro, self.vel_b) * self.dt # 科氏项
-            self.c_bn = attitude.euler2dcm(self.euler)
             self.vel = self.c_bn.T.dot(self.vel_b)
 
             # 使用上一时刻的速度更新位置
@@ -52,4 +51,6 @@ class INS(object):
 
 if __name__ == "__main__":
     pass
+
+
 

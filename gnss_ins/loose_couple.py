@@ -111,7 +111,7 @@ class LooseCouple:
         ekf.set_initial_state(np.zeros((STATUS_DIMENSION, 1)), P)
 
         self.c_bn = attitude.euler2dcm(init_euler)
-        self.init_lla = gps_data[0][0:3]
+        self.init_lla = gnss_data[0][0:3]
         self.vel_b = self.c_bn.dot(init_vel)
         earth_param = geoparams.geo_param(geoparams.ecef2lla(self.init_lla))
         self.g_n = np.array([0.0, 0.0, earth_param[2]])
@@ -437,3 +437,4 @@ if __name__ == "__main__":
 
     plt.tight_layout()
     plt.show()
+
