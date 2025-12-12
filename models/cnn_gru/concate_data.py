@@ -2,7 +2,7 @@ import torch
 import os
 from matplotlib import pyplot as plt
 
-from cnn_gru.model import CNN_GRU, config
+from models.cnn_gru.model import CNN_GRU, config
 
 def concate_data(file_path, model_name: str, x_index, y_index, z_index):
 

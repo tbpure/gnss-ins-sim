@@ -4,7 +4,7 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
-from cnn_gru.train import create_dataloader, train_model
+from models.cnn_gru.train import create_dataloader
 from model import config, CNN_GRU
 import torch
 from torch import nn, optim

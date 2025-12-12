@@ -163,4 +163,4 @@ def run(file_path:str = '/Users/yangyu/PycharmProjects/gnss-ins-sim/cnn_gru/demo
 
 
 if __name__ == '__main__':
-    run(file_path='/Users/yangyu/PycharmProjects/gnss-ins-sim/sim_data_gen/sim_files/saved_file/constant_vertical_fall')
+    run(file_path='/sim_data_gen/sim_files/saved_file/constant_vertical_fall')

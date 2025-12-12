@@ -66,7 +66,13 @@ def concat_data_from_dict(data_dict: dict[str, np.ndarray]):
 def get_ref_data_from_path(path, file_list:list[str]):
     return get_data_from_path(path, file_list, ref = True)
 
+
+def pad(arr, target_len):
+    padded = np.full((target_len, arr.shape[1]), np.nan)
+    padded[:len(arr)] = arr
+    return padded
+
 if __name__ == '__main__':
-    imu_data = get_imu_data_from_path('/Users/yangyu/PycharmProjects/gnss-ins-sim/cnn_gru/demo_saved_data/drone_sim/2025-06-03-09-45-29')
+    imu_data = get_imu_data_from_path('/models/cnn_gru/demo_saved_data/drone_sim/2025-06-03-09-45-29')
 
 

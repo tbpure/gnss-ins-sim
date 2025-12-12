@@ -10,6 +10,9 @@ from utils.data_io import get_imu_data_from_path, get_gnss_data_from_path, get_a
 from utils.matrix_utils import skew
 from utils.unit_transfer import deg2rad
 
+
+# 程序中ecef与ned看作相似
+
 # 假定 STATUS_DIMENSION, IDX_* 常量与前文一致
 STATUS_DIMENSION = 21
 IDX_DR = slice(0, 3)
@@ -275,7 +278,7 @@ class AdaptiveLooseCouple:
 
 
 if __name__ == "__main__":
-    file_path = "/Users/yangyu/PycharmProjects/gnss-ins-sim/sim_data_gen/sim_files/saved_file/default/2025-11-24-16-26-53"
+    file_path = "/Users/yangyu/PycharmProjects/gnss-ins-sim/sim_data_gen/sim_files/saved_file/motion_def-90deg_turn_long/2025-11-10-20-00-21"
     imu_params = {
         "G_CONST": 9.8,
         # 随机游走 (PSD)
@@ -314,6 +317,24 @@ if __name__ == "__main__":
         init_vel_b = gps_data[0, 3:6]
     else:
         init_vel_b = ref_vel['vel'][0, 0:3]
+
+    for i in range(len(gps_data)):
+        col_mean = gps_data.mean(axis=0)
+        # if i in range(10, 20):
+        #     ratio = 2 * 1e5
+        #     gps_data[i, 0] += np.random.randn() * col_mean[0] / ratio
+        #     gps_data[i, 1] += np.random.randn() * col_mean[1] / ratio
+        #     gps_data[i, 2] += np.random.randn() * col_mean[2] / ratio
+        #     gps_data[i, 3] += np.random.randn() * col_mean[3] / ratio
+        #     gps_data[i, 4] += np.random.randn() * col_mean[4] / ratio
+        #     gps_data[i, 5] += np.random.randn() * col_mean[5] / ratio
+        # elif i in range(30, 45):
+        #     gps_data[i, 0] += np.random.randn() * col_mean[0] / ratio
+        #     gps_data[i, 1] += np.random.randn() * col_mean[1] / ratio
+        #     gps_data[i, 2] += np.random.randn() * col_mean[2] / ratio
+        #     gps_data[i, 3] += np.random.randn() * col_mean[3] / ratio
+        #     gps_data[i, 4] += np.random.randn() * col_mean[4] / ratio
+        #     gps_data[i, 5] += np.random.randn() * col_mean[5] / ratio
     loose = AdaptiveLooseCouple(imu_params, imu_data, gps_data, init_vel_b, deg2rad(att_data[0][0:3]), save=['P'])
 
 
@@ -347,7 +368,7 @@ if __name__ == "__main__":
     plt.figure(figsize=(8, 8), dpi=120)
 
     plt.plot(ekf_pos[:, 1], ekf_pos[:, 0], label="AKF", linewidth=2)
-    # plt.plot(ins_result[:, 1], ins_result[:, 0], label="INS", linewidth=2, alpha=0.8)
+    plt.plot(ins_result[:, 1], ins_result[:, 0], label="INS", linewidth=2, alpha=0.8)
     plt.plot(gps_data[:, 1], gps_data[:, 0], label="GPS", linestyle='--', linewidth=1.8, alpha=0.9)
     plt.plot(ref_pos[:, 1], ref_pos[:, 0], label="Reference", linewidth=1.5)
 

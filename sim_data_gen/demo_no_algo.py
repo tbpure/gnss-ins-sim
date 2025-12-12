@@ -34,7 +34,7 @@ def test_path_gen(save_to_dir:str='', target_file_path:str='', file_name:str='mo
     test only path generation in Sim.
     '''
     #### choose a built-in IMU model, typical for IMU381
-    imu_err = 'mid-accuracy'
+    imu_err = 'low-accuracy'
     # imu_err = {
     #     'gyro_b': np.array([0.0, 0.0, 0.0]),
     #     'gyro_arw': np.array([0.8, 0.8, 0.8]),  # 陀螺角随机游走
@@ -49,7 +49,7 @@ def test_path_gen(save_to_dir:str='', target_file_path:str='', file_name:str='mo
     #     'mag_std': np.array([0.3, 0.3, 0.3])
     # }
     # generate GPS and magnetometer data
-    imu = imu_model.IMU(axis=9, gps=True)
+    imu = imu_model.IMU(accuracy=imu_err, axis=9, gps=True)
 
     #### start simulation
     sim = ins_sim.Sim([fs, fs_gps, fs_mag],
@@ -63,7 +63,7 @@ def test_path_gen(save_to_dir:str='', target_file_path:str='', file_name:str='mo
     # save simulation data to files
     sim.results(save_to_dir)
     # plot data, 3d plot of reference positoin, 2d plots of gyro and accel
-    # sim.plot(['ref_pos', 'gyro', 'gps_visibility'], opt={'ref_pos': '3d'})
+    sim.plot(['ref_pos'], opt={'ref_pos': '3d'})
 
 if __name__ == '__main__':
     test_path_gen('./sim_files/saved_file/', '', 'default.csv')

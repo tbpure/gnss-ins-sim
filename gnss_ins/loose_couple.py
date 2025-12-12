@@ -351,7 +351,7 @@ def test():
 
 
 if __name__ == "__main__":
-    file_path = "/Users/yangyu/PycharmProjects/gnss-ins-sim/sim_data_gen/sim_files/saved_file/default/2025-11-24-16-26-53"
+    file_path = "/Users/yangyu/PycharmProjects/gnss-ins-sim/sim_data_gen/sim_files/saved_file/motion_def-90deg_turn_long/2025-11-10-20-00-21"
     imu_params = {
         "G_CONST": 9.8,
         # 随机游走 (PSD)

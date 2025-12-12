@@ -85,25 +85,26 @@ def get_dataloader(file_list, step, batch_size=64, shuffle=True):
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
-def train_model(train_loader, input_dim, epochs=10, lr=1e-3, device="mpu"):
-    device = torch.device(device if torch.cuda.is_available() else "cpu")
-
+def train_model(train_loader, input_dim, epochs=10, lr=1e-3, device="mps"):
+    device = torch.device(device if torch.mps.is_available() else "cpu")
+    print(f'traing model on {device}')
     model = LSTMModel(input_size=input_dim).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.MSELoss()
+    signals_weights_tensor = np.array([3.8, 3.9, 7.6, 1, 1, 5.5])
+    criterion = WeightedMAE(signals_weights_tensor)
 
 
     for epoch in range(epochs):
         model.train()
         total_loss = 0
+        count = 0
 
         for x, y in train_loader:
             x = x.to(device)
             y = y.to(device)
 
             pred = model(x)
-            signals_weights_tensor = np.array([3.8, 3.9, 7.6, 1, 1, 5.5])
-            criterion = WeightedMAE(signals_weights_tensor)
             loss = criterion(pred, y)
 
             optimizer.zero_grad()
@@ -111,8 +112,9 @@ def train_model(train_loader, input_dim, epochs=10, lr=1e-3, device="mpu"):
             optimizer.step()
 
             total_loss += loss.item()
+            count += 1
 
-        print(f"Epoch {epoch+1}/{epochs}, Loss = {total_loss:.4f}")
+        print(f"Epoch {epoch+1}/{epochs}, Loss = {total_loss/count:.4f}")
 
     return model
 

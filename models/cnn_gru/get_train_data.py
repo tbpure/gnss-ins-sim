@@ -4,7 +4,7 @@ import os.path
 import torch
 from matplotlib import pyplot as plt
 
-from cnn_gru.model import CNN_GRU
+from models.cnn_gru.model import CNN_GRU
 
 
 def load_saved_train_data(file_path:str, train_model:bool=True, train_data:bool = True):
