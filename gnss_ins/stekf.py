@@ -1,19 +1,15 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-from gnss_ins.loose_couple import calc_RN_RM, calc_omega_en_n, calc_omega_ie_n, calc_gravity
 from ins.run_algo import D2R
-from sim_data_gen.gnss_ins_sim.attitude import attitude
-from sim_data_gen.gnss_ins_sim.geoparams import geoparams
 from utils.data_io import get_imu_data_from_path, get_gnss_data_from_path, get_att_data_from_path, \
     get_ref_data_from_path
+# 假设这些从你的前文导入
 from utils.matrix_utils import skew
+from sim_data_gen.gnss_ins_sim.geoparams import geoparams
+from gnss_ins.loose_couple import calc_RN_RM, calc_omega_en_n, calc_omega_ie_n, calc_gravity
 from utils.unit_transfer import deg2rad
 
-
-# 程序中ecef与ned看作相似
-
-# 假定 STATUS_DIMENSION, IDX_* 常量与前文一致
 STATUS_DIMENSION = 21
 IDX_DR = slice(0, 3)
 IDX_DV = slice(3, 6)
@@ -24,33 +20,30 @@ IDX_SG = slice(15, 18)
 IDX_SA = slice(18, 21)
 
 
-class AdaptiveLooseCouple:
+class StrongTrackingLooseCouple:
     """
-    基于你原来 LooseCouple 的自适应卡尔曼滤波（AKF）实现。
-    采用 innovation-based 自适应观测噪声估计（R_pos, R_vel）。
+    基于强跟踪扩展卡尔曼滤波 (STEKF) 的松组合导航。
+    采用单渐消因子 (Single Fading Factor) 调整预测协方差 P，以提升突变状态下的跟踪能力。
     """
 
     def __init__(self, imu_params, imu_data, gnss_data, init_vel, init_euler,
-                 adapt_alpha=0.98, r_min_pos=0.1, r_min_vel=0.01, dt=0.01, save=None):
+                 stf_alpha=0.95, dt=0.01, save=None):
         """
-        adapt_alpha: 创新协方差指数平滑因子（越接近1越慢变化）
-        r_min_pos / r_min_vel: 估计出的 R 对角线下限（防止变成负或过小）
-        dt: IMU 采样间隔
+        stf_alpha: 新息协方差的指数平滑因子（通常取 0.9 ~ 0.99）
         """
         if save is None:
             self.save = []
         else:
             self.save = save
+
         self.imu_params = imu_params.copy()
         self.imu_data = imu_data.copy()
         self.gnss_data = gnss_data.copy()
         self.dt = dt
 
-        # 初始化 INS （与你原来代码一致）
-        from ins.ins_algo import INS  # 延迟导入以兼容你的工程结构
+        from ins.ins_algo import INS
         self.ins = INS(imu_data, gnss_data, init_vel, init_euler)
 
-        # 初始 EKF 状态（仅误差态）
         self.x = np.zeros((STATUS_DIMENSION, 1))
         self.P = np.eye(STATUS_DIMENSION)
         self.P[IDX_DR, IDX_DR] *= 1.0 ** 2
@@ -59,33 +52,24 @@ class AdaptiveLooseCouple:
         self.P[IDX_BG, IDX_BG] *= np.deg2rad(0.1 / 3600) ** 2
         self.P[IDX_BA, IDX_BA] *= (1e-3 * imu_params["G_CONST"]) ** 2
 
-        # 观测噪声初值（可调整）
+        # 固定的观测噪声 (位置和速度)
         self.R_pos = np.eye(3) * 1.5 ** 2
         self.R_vel = np.eye(3) * 0.5 ** 2
 
-        # 自适应参数
-        self.adapt_alpha = adapt_alpha
-        self.r_min_pos = r_min_pos
-        self.r_min_vel = r_min_vel
+        # 为了 STEKF 方便，将位置和速度合并为 6 维观测噪声矩阵
+        self.R_gnss = np.zeros((6, 6))
+        self.R_gnss[0:3, 0:3] = self.R_pos
+        self.R_gnss[3:6, 3:6] = self.R_vel
 
-        # 创新协方差的指数平滑估计 (初始化以R为基准)
-        self.Sy_pos = self.R_pos.copy()
-        self.Sy_vel = self.R_vel.copy()
+        # STEKF 参数
+        self.stf_alpha = stf_alpha
+        self.Vk = self.R_gnss.copy()  # 初始化实际新息协方差为 R
 
-        # 其它状态拷贝（方便构建 F/G/q）
-        self.gyro_bias = imu_params.get("gyro_bias", 0.0)
-        self.accel_bias = imu_params.get("accel_bias", 0.0)
-        self.gyro_std = imu_params.get("gyro_std", 0.0)
-        self.accel_std = imu_params.get("accel_std", 0.0)
-
-        # 保留一些数据以供外部检查
         self.saved = {}
         self.results = []
 
-    # 将你之前的 build_F, build_G, build_q 等函数照抄到这里（或直接 import）
-    # 为简洁起见，假设这些函数与 LooseCouple 的签名一致并在此类中实现
     def build_F(self, Cnb, acc, gyro, vn, ecef_pos, earth, imu_params):
-        # 这里直接复制你原来的 build_F 实现（保持一致）
+        # 保持与原版一致
         F = np.zeros((STATUS_DIMENSION, STATUS_DIMENSION))
         lla_pos = geoparams.ecef2lla(ecef_pos)
         RM, RN = earth["RM"], earth["RN"]
@@ -94,7 +78,6 @@ class AdaptiveLooseCouple:
         phi_lat = earth.get("lat", 0.0)
         omega_in_n = earth.get("omega_in_n", np.zeros(3))
 
-        # Frr (位置-位置耦合)
         Frr = np.array([
             [-vD / (RM + h), 0, vN / (RM + h)],
             [vE * np.tan(phi_lat) / (RN + h), -(vD - vN * np.tan(phi_lat)) / (RN + h), vE / (RN + h)],
@@ -104,7 +87,6 @@ class AdaptiveLooseCouple:
         F[IDX_DR, IDX_DV] = np.eye(3)
 
         Fvr = np.zeros((3, 3))
-        # 使用 self.g_n 作为近似重力（NED）
         Fvr[2, 2] = 2 * (self.ins.g_n[2]) * -1 / (RM + h)
         F[IDX_DV, IDX_DR] = Fvr
 
@@ -146,36 +128,6 @@ class AdaptiveLooseCouple:
         q[15:18, 15:18] = 2.0 * (imu_params["sigma_sa"] ** 2) / imu_params["Tas"] * np.eye(3)
         return q
 
-    # self-contained adaptive R update routine
-    def adapt_R_from_innovation(self, y, H, P, R_est_container, Sy_container, adapt_alpha, r_min_diag):
-        """
-        Innovation-based adaptive R estimation (scalar/diag enforced).
-        y: innovation vector (m x 1)
-        H: measurement matrix (m x n)
-        P: state covariance (n x n)
-        R_est_container: reference to current R estimate (m x m)
-        Sy_container: current innovation covariance estimate (m x m)
-        adapt_alpha: smoothing factor for Sy update
-        r_min_diag: minimum diag values (float or array)
-        """
-        # 更新瞬时创新二次型
-        y = y.reshape(-1, 1)
-        Sy_new = adapt_alpha * Sy_container + (1.0 - adapt_alpha) * (y @ y.T)
-        # 理论上的 Sy = H P H^T + R  => R_est = Sy - H P H^T
-        HPHT = H @ P @ H.T
-        R_est = Sy_new - HPHT
-
-        # 强制对角化，且下限（你可以改成更复杂的 PD 修正）
-        R_diag = np.diag(R_est)
-        # 若某些 R_diag 非正则或太小，则以下限替代
-        R_diag_clamped = np.maximum(R_diag, r_min_diag)
-        R_new = np.diag(R_diag_clamped)
-
-        # 写回
-        Sy_container[:, :] = Sy_new
-        R_est_container[:, :] = R_new
-        return R_new
-
     def run(self):
         ins = self.ins
         imu_params = self.imu_params.copy()
@@ -184,10 +136,8 @@ class AdaptiveLooseCouple:
 
         x = self.x
         P = self.P
-
         q = self.build_q(imu_params)
         dt = self.dt
-
         saved = {}
 
         for i, imu in enumerate(ins_data):
@@ -201,11 +151,6 @@ class AdaptiveLooseCouple:
 
             # 2) 构造 F, G, Qk
             lla = geoparams.ecef2lla(pos)
-            # 构建 earth 字典（可以直接 copy 你的 build_earth）
-            RN = None
-            RM = None
-            # 这里调用你外部工具（或直接实现 build_earth），为节省篇幅假设已实现
-            # 但我们需要 RN, RM, omega_in_n, g_n 等，简化写：
             earth = {
                 "lat": lla[0],
                 "h": lla[2],
@@ -223,52 +168,67 @@ class AdaptiveLooseCouple:
             Phi = np.eye(STATUS_DIMENSION) + F * dt
             Qk = (G @ q @ G.T) * dt
 
-            # predict
+            # 3) Predict
             x = Phi @ x
             P = Phi @ P @ Phi.T + Qk
 
-            # GNSS update (假设 GNSS rate = IMU_rate/100)
+            # 4) GNSS Update
             if i % 100 == 0:
                 gnss_index = int(i / 100)
-                gnss = gnss_data[gnss_index][0:3]
+                gnss_pos = gnss_data[gnss_index][0:3]
+                gnss_vel = gnss_data[gnss_index][3:6]
 
-                # ----- position update -----
+                lb = np.zeros(3)
+
+                # --- 构造 6 维联合观测矩阵 H_gnss ---
                 H_pos = np.zeros((3, STATUS_DIMENSION))
                 H_pos[:, IDX_DR] = np.eye(3)
-                lb = np.zeros(3)
                 H_pos[:, IDX_PHI] = skew(Cnb @ lb)
-                z_pos = (ins.position - gnss).reshape(3, 1)
-                y_pos = z_pos - H_pos @ x
-                S_pos = H_pos @ P @ H_pos.T + self.R_pos
-                K_pos = P @ H_pos.T @ np.linalg.inv(S_pos)
-                x = x + K_pos @ y_pos
-                P = (np.eye(STATUS_DIMENSION) - K_pos @ H_pos) @ P
+                z_pos = (ins.position - gnss_pos).reshape(3, 1)
 
-                # 自适应更新 R_pos（基于 innovation）
-                # 这里用对角线下界 r_min_pos
-                Rpos_new = self.adapt_R_from_innovation(y_pos, H_pos, P, self.R_pos, self.Sy_pos,
-                                                        self.adapt_alpha, self.r_min_pos)
-
-                # ----- velocity update -----
                 H_vel = np.zeros((3, STATUS_DIMENSION))
                 H_vel[:, IDX_DV] = np.eye(3)
                 term = Cnb @ np.cross(lb, gyro)
                 H_vel[:, IDX_PHI] = -skew(term)
-                z_vel = (ins.vel - gnss_data[gnss_index][3:6]).reshape(3, 1)
-                y_vel = z_vel - H_vel @ x
-                S_vel = H_vel @ P @ H_vel.T + self.R_vel
-                K_vel = P @ H_vel.T @ np.linalg.inv(S_vel)
-                x = x + K_vel @ y_vel
-                P = (np.eye(STATUS_DIMENSION) - K_vel @ H_vel) @ P
+                z_vel = (ins.vel - gnss_vel).reshape(3, 1)
 
-                Rvel_new = self.adapt_R_from_innovation(y_vel, H_vel, P, self.R_vel, self.Sy_vel,
-                                                        self.adapt_alpha, self.r_min_vel)
+                H_gnss = np.vstack((H_pos, H_vel))
+                z_gnss = np.vstack((z_pos, z_vel))
 
-                # 存储 P
+                # 当前新息
+                y_gnss = z_gnss - H_gnss @ x
+
+                # --- STEKF: 计算并引入渐消因子 ---
+                # 1. 平滑更新实际新息协方差 Vk
+                self.Vk = self.stf_alpha * self.Vk + (1 - self.stf_alpha) * (y_gnss @ y_gnss.T)
+
+                # 2. 计算渐消因子 lambda
+                # tr_N = tr(Vk - R)
+                # tr_M = tr(H * P * H^T)
+                tr_N = np.trace(self.Vk - self.R_gnss)
+                tr_M = np.trace(H_gnss @ P @ H_gnss.T)
+
+                if tr_M > 0:
+                    lambda_k = max(1.0, tr_N / tr_M)
+                else:
+                    lambda_k = 1.0
+
+                # 3. 强跟踪：放大预测协方差
+                P = lambda_k * P
+
+                if 'lambda' in self.save:
+                    saved.setdefault('lambda', []).append(lambda_k)
+
+                # --- 常规 EKF 状态更新 ---
+                S_gnss = H_gnss @ P @ H_gnss.T + self.R_gnss
+                K_gnss = P @ H_gnss.T @ np.linalg.inv(S_gnss)
+
+                x = x + K_gnss @ y_gnss
+                P = (np.eye(STATUS_DIMENSION) - K_gnss @ H_gnss) @ P
+
                 if 'P' in self.save:
                     saved.setdefault('P', []).append(P.copy())
 
-            # 保存每步 x
             self.results.append(x.copy())
 
         self.saved = saved
@@ -277,7 +237,7 @@ class AdaptiveLooseCouple:
         return self.results
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     file_path = "/Users/yangyu/PycharmProjects/gnss-ins-sim/sim_data_gen/sim_files/saved_file/motion_def-90deg_turn_long/mid-accuracy"
     imu_params = {
         "G_CONST": 9.8,
@@ -335,12 +295,15 @@ if __name__ == "__main__":
         #     gps_data[i, 3] += np.random.randn() * col_mean[3] / ratio
         #     gps_data[i, 4] += np.random.randn() * col_mean[4] / ratio
         #     gps_data[i, 5] += np.random.randn() * col_mean[5] / ratio
-    loose = AdaptiveLooseCouple(imu_params, imu_data, gps_data, init_vel_b, deg2rad(att_data[0][0:3]), save=['P'])
+    # 初始化 STEKF (保存 'lambda' 和 'P' 方便可视化分析)
+    loose_stf = StrongTrackingLooseCouple(imu_params, imu_data, gps_data, init_vel_b, deg2rad(att_data[0][0:3]),
+                                          save=['P', 'lambda'])
 
-
-    ekf_states = loose.run()
-    for k in loose.saved:
-        value = loose.saved[k]
+    ekf_states = loose_stf.run()
+    for k in loose_stf.saved:
+        if k == "lambda":
+            continue
+        value = loose_stf.saved[k]
         mat_list = np.array(value)  # shape = (T, 21, 21)
         T = mat_list.shape[0]
 
@@ -356,7 +319,7 @@ if __name__ == "__main__":
         plt.grid(True)
         plt.tight_layout()
         plt.show()
-    ins_result = loose.ins.out_put
+    ins_result = loose_stf.ins.out_put
     ekf_pos = np.zeros_like(ins_result)
     for i in range(len(ekf_states)):
         s = ekf_states[i]
@@ -383,3 +346,14 @@ if __name__ == "__main__":
 
     plt.tight_layout()
     plt.show()
+
+
+    # 如果想看渐消因子的变化，可以加一个简单的作图：
+    if 'lambda' in loose_stf.saved:
+        plt.figure(figsize=(10, 4))
+        plt.plot(loose_stf.saved['lambda'], color='red')
+        plt.title("STEKF Fading Factor (λ) Over Time")
+        plt.xlabel("GNSS Update Steps")
+        plt.ylabel("λ value")
+        plt.grid(True)
+        plt.show()

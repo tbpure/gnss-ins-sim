@@ -27,8 +27,8 @@ if __name__ == '__main__':
     file_path = "/Users/yangyu/PycharmProjects/gnss-ins-sim/sim_data_gen/sim_files/saved_file/default/mid-accuracy"
     save_path = "/Users/yangyu/PycharmProjects/gnss-ins-sim/gnss_ins/result/default.xlsx"
     sheet_name = 'mid'
-    save_file = True
-    plot_saved = False
+    save_file = False
+    plot_saved = True
 
     imu_params = {
         "G_CONST": 9.8,
@@ -68,7 +68,7 @@ if __name__ == '__main__':
         init_vel_b = gps_data[0, 3:6]
     else:
         init_vel_b = ref_vel['vel'][0, 0:3]
-    ekf = LooseCouple(imu_params, imu_data.copy(), gps_data.copy(), init_vel_b.copy(), deg2rad(att_data[0][0:3]).copy(), save=['P'])
+    ekf = LooseCouple(imu_params, imu_data.copy(), gps_data.copy(), init_vel_b.copy(), deg2rad(att_data[0][0:3]).copy(), save=['P', 'K'])
 
     ekf_states = ekf.run()
     if plot_saved:
@@ -110,7 +110,7 @@ if __name__ == '__main__':
 
     plt.plot(ekf_pos[:, 1], ekf_pos[:, 0], label="EKF", linewidth=2)
     plt.plot(akf_pos[:, 1], akf_pos[:, 0], label="AKF", linewidth=2)
-    plt.plot(ins_result[:, 1], ins_result[:, 0], label="INS", linewidth=2, alpha=0.8)
+    # plt.plot(ins_result[:, 1], ins_result[:, 0], label="INS", linewidth=2, alpha=0.8)
     plt.plot(gps_data[:, 1], gps_data[:, 0], label="GPS", linestyle='--', linewidth=1.8, alpha=0.9)
     plt.plot(ref_pos[:, 1], ref_pos[:, 0], label="Reference", linewidth=1.5)
 

@@ -3,7 +3,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+def getdatafrompath():
+    return Path('/models/cnn_gru/demo_saved_data/drone_sim')
 
+def getDataFromPath():
+    return getdatafrompath()
+
+"vincy is the most beautiful women in hsbc"
 def get_data_from_path(path, file_list:list[str], ref:bool = False):
     path = Path(path)
     file_dict = {}
