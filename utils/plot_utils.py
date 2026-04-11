@@ -42,3 +42,92 @@ def plot_3d_trajectory(ecef_data, title="ECEF 三维轨迹"):
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.show()
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+def plot_neu_and_3d(trajectories, labels, ref_idx=None):
+    """
+    trajectories: list of np.ndarray, each shape = (T, 3) -> [N, E, U]
+    labels: list of str
+    ref_idx: int or None, index of reference trajectory
+    """
+
+    plt.rcParams['font.size'] = 12
+
+    # ======================
+    # 1. NEU 分量对比图
+    # ======================
+    fig, axs = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+
+    directions = ['North (m)', 'East (m)', 'Up (m)']
+
+    for i in range(3):
+        for traj, label in zip(trajectories, labels):
+            axs[i].plot(traj[:, i], label=label, linewidth=1.5)
+
+        axs[i].set_ylabel(directions[i])
+        axs[i].grid(True)
+
+    axs[-1].set_xlabel('Time Step')
+    axs[0].legend()
+    fig.suptitle('NEU Position Comparison')
+
+    # ======================
+    # 2. 2D 平面轨迹（NE）
+    # ======================
+    plt.figure(figsize=(6, 6))
+    for traj, label in zip(trajectories, labels):
+        plt.plot(traj[:, 1], traj[:, 0], label=label)  # E vs N
+
+    plt.xlabel('East (m)')
+    plt.ylabel('North (m)')
+    plt.title('2D Trajectory (Top View)')
+    plt.axis('equal')
+    plt.grid(True)
+    plt.legend()
+
+    # ======================
+    # 3. 3D 轨迹
+    # ======================
+    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111, projection='3d')
+
+    for traj, label in zip(trajectories, labels):
+        ax.plot(traj[:, 1], traj[:, 0], traj[:, 2], label=label)  # E, N, U
+
+    ax.set_xlabel('East (m)')
+    ax.set_ylabel('North (m)')
+    ax.set_zlabel('Up (m)')
+    ax.set_title('3D Trajectory Comparison')
+
+    ax.legend()
+
+    plt.show()
+
+
+# ======================
+# 示例（你替换成自己的数据）
+# ======================
+if __name__ == "__main__":
+    T = 500
+
+    # 模拟数据
+    t = np.linspace(0, 10, T)
+
+    ref = np.stack([
+        50 * np.sin(t),
+        50 * np.cos(t),
+        5 * t
+    ], axis=1)
+
+    algo1 = ref + np.random.normal(0, 1, ref.shape)
+    algo2 = ref + np.random.normal(0, 2, ref.shape)
+
+    trajectories = [ref, algo1, algo2]
+    labels = ['Reference', 'EKF', 'Your Method']
+
+    plot_neu_and_3d(trajectories, labels)

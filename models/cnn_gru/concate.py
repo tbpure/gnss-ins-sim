@@ -42,7 +42,7 @@ def concate_data(file_path, model_names: list, x_index, y_index, z_index):
         else:
             sub_model_lists = [model_list]
         for sub_model_list in sub_model_lists:
-            fig, axes = plt.subplots(3, 1, figsize=(10, 15))
+            fig, axes = plt.subplots(3, 1, figsize=(10, 30))
             j = 0
             for model_name in sub_model_list:
                 model_info = torch.load(file_path + "/models/" + model_name)
@@ -66,9 +66,9 @@ def concate_data(file_path, model_names: list, x_index, y_index, z_index):
                     # 将位置增量转换为真实位置轨迹
                     pre_trajectory = pre.cumsum(axis=0)
                     real_trajectory = real.cumsum(axis=0)
-                    axes[i].plot(pre_trajectory[:, i], label=f'{model_name}')
+                    axes[i].plot(pre_trajectory[:70, i], label=f'{model_name}')
                     if j == 0:
-                        axes[i].plot(real_trajectory[:, i], label=f'Real Position')
+                        axes[i].plot(real_trajectory[:70, i], label=f'Real Position')
                         dir_name = os.path.dirname(model_name) or "root"
                         axes[i].set_title(f'Model Group: {dir_name}')
                         axes[i].set_xlabel('Time Step')
@@ -85,6 +85,7 @@ if __name__ == '__main__':
     # x轴使用index为11的数据
     # y轴使用index为2的数据
     # z轴使用index为18的前80s数据
-    # for i in range(19):
+    for i in range(19):
         # concate_data("val_info/20250603_0946", [], i, i, i)
-        concate_data("val_info/20250603_0946", [], 11, 2, 18)
+        pass
+    concate_data("val_info/20250603_0946", [], 11, 2, 18)
