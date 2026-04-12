@@ -6,30 +6,84 @@ from scipy.interpolate import UnivariateSpline
 # ======================
 # 配置与样式设定 (IEEE Standard)
 # ======================
+
+
+# 设置英文字体（IEEE标准）
+plt.rcParams['font.family'] = 'serif'
+plt.rcParams['font.serif'] = ['Times New Roman']
+
+# 指定中文字体（Mac推荐）
+plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
+# 可选：'Heiti TC', 'STHeiti', 'Arial Unicode MS'
+
+plt.rcParams['axes.unicode_minus'] = False
 plt.rcParams.update({
-    "font.family": "Times New Roman",
+    "font.family": ['Times New Roman', 'Arial Unicode MS'],  # ⭐核心
+
     "font.size": 10,
     "axes.labelsize": 11,
     "axes.titlesize": 12,
     "legend.fontsize": 9,
+
     "xtick.direction": "in",
     "ytick.direction": "in",
+
     "axes.grid": True,
     "grid.alpha": 0.3,
-    "grid.linestyle": "--"
-})
+    "grid.linestyle": "--",
 
+    "axes.unicode_minus": False
+})
 # 算法配置：颜色、线型、权重
 # 将提出的算法放在显眼位置
 algo_configs = {
-    'orange': {'label': 'Real Position', 'color': '#000000', 'ls': '--', 'lw': 2.0, 'z': 5},
-    'blue': {'label': 'CNN-SEGGRU (Proposed)', 'color': '#D62728', 'ls': '-', 'lw': 2.2, 'z': 10},
-    'red': {'label': 'IMU (Raw)', 'color': '#7F7F7F', 'ls': ':', 'lw': 1.2, 'z': 2},
-    'yellow': {'label': 'GRU', 'color': '#FF7F0E', 'ls': '-.', 'lw': 1.5, 'z': 3},
-    'purple': {'label': 'CNN-GRU', 'color': '#1F77B4', 'ls': '--', 'lw': 1.5, 'z': 4}
+    'orange': {
+        'label': '真实轨迹 (Ground Truth)',
+        'color': '#6E6E6E',
+        'ls': '--',
+        'lw': 2.0,
+        'z': 20,
+        'alpha': 0.9
+    },
+
+    'blue': {
+        'label': 'CNN-SEGGRU',
+        'color': '#4C72B0',      # 高级蓝（替代刺眼红）
+        'ls': '-',
+        'lw': 2.4,               # 主模型最粗
+        'z': 18
+    },
+
+    'red': {
+        'label': 'IMU原始解',
+        'color': '#B0B0B0',      # 更浅灰（弱化噪声方法）
+        'ls': ':',
+        'lw': 1.2,
+        'z': 5
+    },
+
+    'yellow': {
+        'label': 'GRU方法',
+        'color': '#55A868',      # 绿色（与主蓝形成冷暖对比）
+        'ls': '--',
+        'lw': 1.8,
+        'z': 10
+    },
+
+    'purple': {
+        'label': 'CNN-GRU方法',
+        'color': '#C44E52',      # 柔和红（作为次强对比）
+        'ls': '-.',
+        'lw': 1.8,
+        'z': 12
+    }
 }
 
-directions = {'n': 'North', 'e': 'East', 'h': 'Up'}
+directions = {
+    'n': '北向 (North)',
+    'e': '东向 (East)',
+    'h': '天向 (Up)'
+}
 
 
 # ======================
@@ -41,8 +95,8 @@ def load_and_average(file_path, window=0.5):
         x, y = df.iloc[:, 0].values, df.iloc[:, 1].values
         idx = np.argsort(x)
         x, y = x[idx], y[idx]
-
-        x_new = np.arange(0, 71, 1)
+        y *= 10
+        x_new = np.arange(0, 61, 1)
         y_new = []
         for xi in x_new:
             mask = (x >= xi - window) & (x < xi + window)
@@ -82,9 +136,9 @@ for idx, (d_code, d_name) in enumerate(directions.items()):
         ax.plot(x, y, label=cfg['label'], color=cfg['color'],
                 linestyle=cfg['ls'], linewidth=cfg['lw'], zorder=cfg['z'])
 
-    ax.set_title(f"{d_name} Position")
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Position (m)")
+    ax.set_title(f"{d_name} 位置")
+    ax.set_xlabel("时间 (s)")
+    ax.set_ylabel("位置 (m)")
 # 获取图例句柄
 handles, labels = axes1[0].get_legend_handles_labels()
 
@@ -96,7 +150,6 @@ fig1.tight_layout(rect=[0, 0, 1, 0.92])
 fig1.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 0.98),
            ncol=5, frameon=False, fontsize=10)
 
-fig1.savefig("trajectory_comparison.pdf")
 
 
 # ---------- 图2：误差与统计 ----------
@@ -116,14 +169,19 @@ for idx, (d_code, d_name) in enumerate(directions.items()):
         rmse = np.sqrt(np.mean(error ** 2))
 
         # 针对你提出的算法，可以在标签里加个特殊记号或者加粗（如果环境支持）
-        label_text = f"{cfg['label']} (RMSE: {rmse:.2f}m)"
+        label_text = f"{cfg['label']}（RMSE: {rmse:.2f} m）"
 
         ax.plot(x, error, label=label_text, color=cfg['color'],
                 linestyle=cfg['ls'], linewidth=cfg['lw'], zorder=cfg['z'])
 
-    ax.set_title(f"{d_name} Error Analysis")
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Error (m)")
+        # if "本文方法" in cfg['label']:
+        #     ax.plot(x, error, label=label_text,
+        #             color=cfg['color'], linestyle=cfg['ls'],
+        #             linewidth=2.5, zorder=15)
+
+    ax.set_title(f"{d_name} 误差分析")
+    ax.set_xlabel("时间 (s)")
+    ax.set_ylabel("误差 (m)")
     ax.axhline(0, color='black', lw=1, alpha=0.5)
 
 
@@ -134,6 +192,9 @@ fig2.tight_layout(rect=[0, 0, 1, 0.88]) # 误差图图例较长，多留一点�
 fig2.legend(handles2, labels2, loc='upper center', bbox_to_anchor=(0.5, 0.98),
            ncol=3, frameon=False, fontsize=9)
 
-fig2.savefig("error_comparison.pdf")
+fig1.savefig("figures/trajectory_comparison.pdf", bbox_inches='tight')
+fig1.savefig("figures/trajectory_comparison.png", dpi=600, bbox_inches='tight')
+fig2.savefig("figures/error_comparison.pdf", bbox_inches='tight')
+fig2.savefig("figures/error_comparison.png", dpi=600, bbox_inches='tight')
 
 plt.show()
