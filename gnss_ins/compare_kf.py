@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
+from chapter5.plot_utils import plot_ape_by_datas
 from gnss_ins.akf import AdaptiveLooseCouple
 from gnss_ins.loose_couple import LooseCouple
 from ins.ins_algo import INS
@@ -127,7 +128,7 @@ if __name__ == '__main__':
     att_data = get_att_data_from_path(file_path, ref=True)
     ref_vel = get_ref_data_from_path(file_path, ['vel'])
     ref_pos = get_gnss_data_from_path(file_path, ref = True)
-    # gps_data = add_nn_like_error(gps_data)
+    gps_data = add_nn_like_error(gps_data)
     if gps_data.shape[1] != 3:
         init_vel_b = gps_data[0, 3:6]
     else:
@@ -258,4 +259,12 @@ if __name__ == '__main__':
                 df.to_excel(writer, sheet_name=sheet_name, index=False)
 
         print(f"写入完成: {save_path}, sheet = {sheet_name}")
+
+    datas = {
+        "ekf": ekf_pos[:, 0:3],
+        "akf": akf_pos[:, 0:3],
+        "ins": ins_result[:, 0:3],
+        "CNN_SEGGRU": gps_data[:, 0:3],
+    }
+    plot_ape_by_datas(datas, ref=ref_pos[:, 0:3] ,save_path='figures/akf_sim_error')
 

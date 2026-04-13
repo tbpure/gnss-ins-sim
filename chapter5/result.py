@@ -80,14 +80,11 @@ plt.subplots_adjust(hspace=0.2)  # 调整子图间距
 for i, config in enumerate(plot_configs):
     ax = axes[i]
 
-    # 调用你本地的绘图函数
-    # 注意：这里假设你的 plot_rmse_bars 接受 (ax, data, labels) 等参数
-    # 如果该函数不支持传入 ax，你可能需要根据 plot_rmse_bars 的内部实现进行调整
     plot_rmse_bars(
         ax=ax,
         data=config['data'],
         labels=labels,
-        # 这里的 color 可以对应图片中的 橙色、黄色、青色
+        # 这里的 color 对应图片中的 橙色、黄色、青色
         colors=['#E17A5D', '#E9C46A', '#2A9D8F']
     )
 

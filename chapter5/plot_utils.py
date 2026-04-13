@@ -69,7 +69,7 @@ def plot_rmse_bars(ax, data, labels, colors=None, edge_color='black', bar_width=
     """
     if colors is None:
         # 默认使用图中类似的配色方案
-        colors = ['#E17A5D', '#E9C46A', '#2A9D8F']
+        colors = ['#E17A5D', '#E9C46A', '#2A9D8F', '#264653']
 
     num_algos = len(data)
     num_outages = len(data[0])
@@ -104,3 +104,62 @@ def plot_rmse_bars(ax, data, labels, colors=None, edge_color='black', bar_width=
 
     # 限制坐标轴范围以匹配原图
     ax.set_xlim(-1, num_outages)
+
+
+def plot_ape_by_datas(data:dict, ref:np.array, final_len = 60, save_path = None):
+    # 这里dict value是一个n*3的np array, key是其label
+    target_len = ref.shape[0]
+    for value in data.values():
+        target_len = min(target_len, len(value))
+    ref = ref[::round(ref.shape[0] / target_len), :]
+    # 三维数组
+    errors = []
+    labels = data.keys()
+    for value in data.values():
+        ratio = round(value.shape[0] / target_len)
+        if ratio != 1:
+            value = value[::ratio, :]
+        error = value - ref
+        errors.append(np.abs(error))
+    labels = [x.upper() for x in labels]
+    n, e, h, labels = reformat_by_direction(errors, labels)
+    n = n[:, ::round(n.shape[1] / final_len)]
+    e = e[:, ::round(e.shape[1] / final_len)]
+
+    plot_configs = [
+        {'data': n, 'ylabel': 'North APE/m'},
+        {'data': e, 'ylabel': 'East APE/m'},
+        # {'data': h, 'ylabel': 'Vertical APE/m'},
+    ]
+
+    fig, axes = plt.subplots(len(plot_configs), 1, figsize=(12, 10), sharex=True)
+    plt.subplots_adjust(hspace=0.2)  # 调整子图间距
+
+    # 3. 循环绘制三个子图
+    for i, config in enumerate(plot_configs):
+        ax = axes[i]
+
+        plot_rmse_bars(
+            ax=ax,
+            data=config['data'],
+            labels=labels
+        )
+
+        # 设置细节
+        ax.set_ylabel(config['ylabel'], fontsize=12, fontweight='bold')
+        ax.grid(True, linestyle='-', alpha=0.3)
+        if (config['ylabel'] != "Vertical APE/m"):
+            ax.set_ylim(0, 50)  # 根据原图设置 Y 轴刻度范围
+
+        # 设置 X 轴刻度 (1-30)
+        ax.set_xticks(range(len(config['data'][0])))
+        ax.set_xticklabels(range(1, len(config['data'][0]) + 1))
+
+    # 4. 设置最下方的 X 轴标签
+    axes[-1].set_xlabel('APE', fontsize=12, fontweight='bold')
+
+    # 5. 保存或展示
+    plt.tight_layout()
+    if save_path is not None:
+        plt.savefig(save_path, dpi=600)
+    plt.show()

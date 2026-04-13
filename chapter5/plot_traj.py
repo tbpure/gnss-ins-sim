@@ -93,8 +93,7 @@ for i, config in enumerate(plot_configs):
     plot_rmse_bars(
         ax=ax,
         data=config['data'],
-        labels=labels,
-        colors=['#E17A5D', '#E9C46A', '#2A9D8F']
+        labels=labels
     )
 
     ax.set_ylabel(config['ylabel'], fontsize=12, fontweight='bold')
