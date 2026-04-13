@@ -7,7 +7,7 @@ from sim_data_gen.gnss_ins_sim.sim.sim_data_plot import plot_array
 from utils.data_io import get_data_from_path
 from utils.plot_utils import plot_3d_trajectory
 
-file_path = "origin_position.csv"
+file_path = "datas/origin_position.csv"
 
 df = pd.read_csv(file_path)
 array = df.to_numpy()
@@ -24,7 +24,7 @@ filter_df = pd.DataFrame(
     filter_data,
     columns=["ECEF_X_offset", "ECEF_Y_offset", "Height_original"]
 )
-save_file_name = "filter_ecef_data.csv"
+save_file_name = "datas/filter_ecef_data.csv"
 current_dir = os.getcwd()
 # 拼接完整路径
 full_save_path = os.path.join(current_dir, save_file_name)

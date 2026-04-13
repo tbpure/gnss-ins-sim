@@ -7,7 +7,7 @@ from utils.plot_utils import *
 length = 30
 # 原始数据
 
-dfs = pd.read_excel("concat_data.xlsx", sheet_name=["North", "East", "Height"])
+dfs = pd.read_excel("datas/concat_data.xlsx", sheet_name=["North", "East", "Height"])
 
 df_N = dfs["North"]
 df_E = dfs["East"]

@@ -85,7 +85,7 @@ directions = {
     'h': '天向 (Up)'
 }
 
-
+rmse_results = {d: {} for d in directions}
 # ======================
 # 数据处理函数
 # ======================
@@ -167,7 +167,7 @@ for idx, (d_code, d_name) in enumerate(directions.items()):
 
         error = y - y_ref
         rmse = np.sqrt(np.mean(error ** 2))
-
+        rmse_results[d_code][color] = rmse
         # 针对你提出的算法，可以在标签里加个特殊记号或者加粗（如果环境支持）
         label_text = f"{cfg['label']}（RMSE: {rmse:.2f} m）"
 
@@ -198,3 +198,23 @@ fig2.savefig("figures/error_comparison.pdf", bbox_inches='tight')
 fig2.savefig("figures/error_comparison.png", dpi=600, bbox_inches='tight')
 
 plt.show()
+
+
+# ======================
+# RMSE结果汇总
+# ======================
+rmse_table = pd.DataFrame(rmse_results).T  # 行=方向，列=算法
+
+# 去掉 Ground Truth
+if 'orange' in rmse_table.columns:
+    rmse_table = rmse_table.drop(columns=['orange'])
+
+# 重命名列（更论文风格）
+rename_map = {k: v['label'] for k, v in algo_configs.items() if k != 'orange'}
+rmse_table = rmse_table.rename(columns=rename_map)
+
+# 保留两位小数
+rmse_table = rmse_table.round(2)
+
+print("\n===== RMSE Results (m) =====")
+print(rmse_table)

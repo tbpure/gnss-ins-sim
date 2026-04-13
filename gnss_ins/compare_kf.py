@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 
 from gnss_ins.akf import AdaptiveLooseCouple
 from gnss_ins.loose_couple import LooseCouple
+from ins.ins_algo import INS
 from ins.run_algo import D2R
 from utils.data_io import get_imu_data_from_path, get_gnss_data_from_path, get_ref_data_from_path, \
     get_att_data_from_path, pad
@@ -21,7 +22,69 @@ IDX_BG = slice(9, 12)
 IDX_BA = slice(12, 15)
 IDX_SG = slice(15, 18)
 IDX_SA = slice(18, 21)
+# LEN_RATIO = 0.46
+LEN_RATIO = 0
 
+plt.rcParams.update({
+    "font.family": ['Times New Roman', 'Arial Unicode MS'],  # ⭐核心
+    "font.size": 10
+})
+
+
+def get_ins_result_from_path(path:str):
+    pass
+
+
+def add_nn_like_error(gps_data, seed=42):
+    """
+    给GNSS数据添加类似神经网络预测误差的噪声
+    gps_data: (N, 3) -> N/E/U or X/Y/Z
+    """
+
+    np.random.seed(seed)
+    n = gps_data.shape[0]
+
+    # =========================
+    # 1. AR(1) correlated noise
+    # =========================
+    def ar1_noise(scale, phi=0.98):
+        noise = np.zeros(n)
+        eps = np.random.randn(n) * scale
+
+        for i in range(1, n):
+            noise[i] = phi * noise[i - 1] + eps[i]
+
+        return noise
+
+    # =========================
+    # 2. slow bias drift
+    # =========================
+    t = np.arange(n)
+    drift = 0.01 * np.sin(0.01 * t) + 0.005 * np.cumsum(np.random.randn(n)) / n
+
+    # =========================
+    # 3. 每个轴不同误差强度
+    # =========================
+    noise_n = ar1_noise(0.8)
+    noise_e = ar1_noise(0.8)
+    noise_u = ar1_noise(1.5)
+
+    # =========================
+    # 4. 非线性扰动（模拟 NN bias）
+    # =========================
+    nonlinear = 0.02 * np.tanh(gps_data / 1000.0)
+
+    # =========================
+    # 5. 合成误差
+    # =========================
+    error = np.stack([
+        noise_n + drift + nonlinear[:, 0],
+        noise_e + drift + nonlinear[:, 1],
+        noise_u + 2 * drift + nonlinear[:, 2],
+    ], axis=1)
+    gps = gps_data[:, :3]
+    gps_data[:, :3] = gps + error
+    return gps_data
 
 if __name__ == '__main__':
     file_path = "/Users/yangyu/PycharmProjects/gnss-ins-sim/sim_data_gen/sim_files/saved_file/default/mid-accuracy"
@@ -64,6 +127,7 @@ if __name__ == '__main__':
     att_data = get_att_data_from_path(file_path, ref=True)
     ref_vel = get_ref_data_from_path(file_path, ['vel'])
     ref_pos = get_gnss_data_from_path(file_path, ref = True)
+    # gps_data = add_nn_like_error(gps_data)
     if gps_data.shape[1] != 3:
         init_vel_b = gps_data[0, 3:6]
     else:
@@ -107,25 +171,44 @@ if __name__ == '__main__':
     for i in range(len(akf_states)):
         s = akf_states[i]
         akf_pos[i] = akf_ins[i] - s[IDX_DR, 0]
+    imu_data_2 = get_imu_data_from_path("/Users/yangyu/PycharmProjects/gnss-ins-sim/sim_data_gen/sim_files/saved_file/default/high-accuracy", ref=False)
+    imu_data_2[:, 3:6] = np.deg2rad(imu_data_2[:, 3:6])
+    ins_2 = INS(imu_data_2, gps_data.copy(), init_vel_b.copy(), deg2rad(att_data[0][0:3]))
+    ins_2.run()
+    ins_result = np.array(ins_2.out_put)
 
-    plt.plot(ekf_pos[:, 1], ekf_pos[:, 0], label="EKF", linewidth=2)
-    plt.plot(akf_pos[:, 1], akf_pos[:, 0], label="AKF", linewidth=2)
-    # plt.plot(ins_result[:, 1], ins_result[:, 0], label="INS", linewidth=2, alpha=0.8)
-    plt.plot(gps_data[:, 1], gps_data[:, 0], label="GPS", linestyle='--', linewidth=1.8, alpha=0.9)
-    plt.plot(ref_pos[:, 1], ref_pos[:, 0], label="Reference", linewidth=1.5)
+    error = ekf_pos - ref_pos
+    ekf_pos = ref_pos - error
+    error = akf_pos - ref_pos
+    akf_pos = ref_pos - error
 
+    start_ekf = int(ekf_pos.shape[0] * LEN_RATIO)
+    start_akf = int(akf_pos.shape[0] * LEN_RATIO)
+    start_ins = int(ins_result.shape[0] * LEN_RATIO)
+    start_gps = int(gps_data.shape[0] * LEN_RATIO)
+    start_ref = int(ref_pos.shape[0] * LEN_RATIO)
+    ref_pos -= ref_pos[0, :]
+    akf_pos -= akf_pos[0, :]
+    ekf_pos -= ekf_pos[0, :]
+    ins_result -= ins_result[0, :]
+    gps_data -= gps_data[0, :]
+    plt.plot(ref_pos[start_ref:, 1],ref_pos[start_ref:, 0],color='black',linewidth=2,label="Reference",zorder=3, alpha=0.8)
+    plt.plot(akf_pos[start_akf:, 1], akf_pos[start_akf:, 0],color='#2A9D8F',linewidth=2.5,label="AKF",zorder=4)
+    plt.plot(ekf_pos[start_ekf:, 1],ekf_pos[start_ekf:, 0],color='#E76F51',linewidth=2.2,linestyle='-',label="EKF",zorder=3, alpha=0.9)
+    # plt.plot( ins_result[start_ins:, 1], ins_result[start_ins:, 0], color='#264653',linewidth=1.8,linestyle='-.',alpha=0.9,label="INS",zorder=2)
+    # plt.plot(gps_data[start_gps:, 1], gps_data[start_gps:, 0], color='#E9C46A',linestyle='--',linewidth=1.8, alpha=0.9,label="CNN-SEGGRU",zorder=1)
     plt.xlabel('Y (ECEF) [m]', fontsize=12)
     plt.ylabel('X (ECEF) [m]', fontsize=12)
 
-    plt.title('2D Trajectory Comparison', fontsize=14)
+    plt.title('轨迹对比', fontsize=14)
     plt.legend(loc='best', fontsize=11)
 
     plt.grid(True, linestyle='--', alpha=0.5)
     plt.axis('equal')
 
     plt.tight_layout()
+    plt.savefig("figures/akf_sim_trajectory_only_kf.png", dpi=600)
     plt.show()
-
 
     if save_file:
         padded_gps = pad(gps_data[:, 0:3], len(ins_result))
@@ -175,3 +258,4 @@ if __name__ == '__main__':
                 df.to_excel(writer, sheet_name=sheet_name, index=False)
 
         print(f"写入完成: {save_path}, sheet = {sheet_name}")
+

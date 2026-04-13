@@ -48,6 +48,10 @@ class INS(object):
             self.gyro = gyro
         self.index += 1
 
+    def run(self):
+        for i, imu in enumerate(self.imu_data):
+            # ins状态更新
+            self.step()
 
 if __name__ == "__main__":
     pass
