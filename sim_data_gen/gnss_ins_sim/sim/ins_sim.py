@@ -307,7 +307,7 @@ class Sim(object):
             if data in self.interested_error:
                 is_angle = self.interested_error[data] == 'angle'
             self.dmgr.plot(data, keys, is_angle, opt, extra_opt)
-        # show figures
+        # show result
         self.dmgr.show_plot()
 
     def get_names_of_available_data(self):

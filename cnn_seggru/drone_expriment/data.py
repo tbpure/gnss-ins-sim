@@ -192,10 +192,11 @@ fig2.tight_layout(rect=[0, 0, 1, 0.88]) # 误差图图例较长，多留一点�
 fig2.legend(handles2, labels2, loc='upper center', bbox_to_anchor=(0.5, 0.98),
            ncol=3, frameon=False, fontsize=9)
 
-fig1.savefig("figures/trajectory_comparison.pdf", bbox_inches='tight')
-fig1.savefig("figures/trajectory_comparison.png", dpi=600, bbox_inches='tight')
-fig2.savefig("figures/error_comparison.pdf", bbox_inches='tight')
-fig2.savefig("figures/error_comparison.png", dpi=600, bbox_inches='tight')
+if (1 == 0):
+    fig1.savefig("result/trajectory_comparison.pdf", bbox_inches='tight')
+    fig1.savefig("result/trajectory_comparison.png", dpi=600, bbox_inches='tight')
+    fig2.savefig("result/error_comparison.pdf", bbox_inches='tight')
+    fig2.savefig("result/error_comparison.png", dpi=600, bbox_inches='tight')
 
 plt.show()
 

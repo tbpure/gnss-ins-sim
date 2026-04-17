@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from chapter5.plot_utils import plot_rmse_bars, reformat_by_direction
+from akf_gnss_ins.drone_expriment.plot_utils import plot_rmse_bars, reformat_by_direction
 
 # ======================
 # 参数

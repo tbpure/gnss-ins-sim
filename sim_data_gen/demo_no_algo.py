@@ -66,7 +66,7 @@ def test_path_gen(save_to_dir:str='', target_file_path:str='', file_name:str='mo
     sim.plot(['ref_pos'], opt={'ref_pos': '3d'})
 
 if __name__ == '__main__':
-    test_path_gen('./sim_files/saved_file/', '', 'default.csv')
+    test_path_gen('./sim_files/saved_file/', '', 'high_dymanic.csv')
 
 
 

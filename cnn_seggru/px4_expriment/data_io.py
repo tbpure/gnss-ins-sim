@@ -190,10 +190,10 @@ fig2.legend(
 import os
 os.makedirs("figures", exist_ok=True)
 
-fig1.savefig("figures/trajectory_comparison.pdf", bbox_inches='tight')
-fig1.savefig("figures/trajectory_comparison.png", dpi=600, bbox_inches='tight')
-fig2.savefig("figures/error_comparison.pdf", bbox_inches='tight')
-fig2.savefig("figures/error_comparison.png", dpi=600, bbox_inches='tight')
+fig1.savefig("result/trajectory_comparison.pdf", bbox_inches='tight')
+fig1.savefig("result/trajectory_comparison.png", dpi=600, bbox_inches='tight')
+fig2.savefig("result/error_comparison.pdf", bbox_inches='tight')
+fig2.savefig("result/error_comparison.png", dpi=600, bbox_inches='tight')
 
 plt.show()
 

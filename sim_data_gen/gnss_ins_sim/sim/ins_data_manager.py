@@ -18,7 +18,7 @@ from ..geoparams import geoparams
 class InsDataMgr(object):
     '''
     A class that manage all data generated in an INS solution. For example, reference data,
-    sensor data, algorithm results. These data can be saved to files or plot in figures.
+    sensor data, algorithm results. These data can be saved to files or plot in result.
     '''
     def __init__(self, fs, ref_frame=0):
         '''
