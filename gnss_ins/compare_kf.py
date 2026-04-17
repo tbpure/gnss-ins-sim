@@ -176,7 +176,7 @@ if __name__ == '__main__':
     imu_data_2[:, 3:6] = np.deg2rad(imu_data_2[:, 3:6])
     ins_2 = INS(imu_data_2, gps_data.copy(), init_vel_b.copy(), deg2rad(att_data[0][0:3]))
     ins_2.run()
-    ins_result = np.array(ins_2.out_put)
+    # ins_result = np.array(ins_2.out_put)
 
     error = ekf_pos - ref_pos
     ekf_pos = ref_pos - error
@@ -196,7 +196,7 @@ if __name__ == '__main__':
     plt.plot(ref_pos[start_ref:, 1],ref_pos[start_ref:, 0],color='black',linewidth=2,label="Reference",zorder=3, alpha=0.8)
     plt.plot(akf_pos[start_akf:, 1], akf_pos[start_akf:, 0],color='#2A9D8F',linewidth=2.5,label="AKF",zorder=4)
     plt.plot(ekf_pos[start_ekf:, 1],ekf_pos[start_ekf:, 0],color='#E76F51',linewidth=2.2,linestyle='-',label="EKF",zorder=3, alpha=0.9)
-    # plt.plot( ins_result[start_ins:, 1], ins_result[start_ins:, 0], color='#264653',linewidth=1.8,linestyle='-.',alpha=0.9,label="INS",zorder=2)
+    plt.plot( ins_result[start_ins:, 1], ins_result[start_ins:, 0], color='#264653',linewidth=1.8,linestyle='-.',alpha=0.9,label="INS",zorder=2)
     # plt.plot(gps_data[start_gps:, 1], gps_data[start_gps:, 0], color='#E9C46A',linestyle='--',linewidth=1.8, alpha=0.9,label="CNN-SEGGRU",zorder=1)
     plt.xlabel('Y (ECEF) [m]', fontsize=12)
     plt.ylabel('X (ECEF) [m]', fontsize=12)
@@ -266,5 +266,5 @@ if __name__ == '__main__':
         "ins": ins_result[:, 0:3],
         "CNN_SEGGRU": gps_data[:, 0:3],
     }
-    plot_ape_by_datas(datas, ref=ref_pos[:, 0:3] ,save_path='figures/akf_sim_error')
+    plot_ape_by_datas(datas, ref=ref_pos[:, 0:3] ,save_path=None)
 

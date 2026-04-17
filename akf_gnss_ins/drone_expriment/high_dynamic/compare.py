@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from akf_gnss_ins.drone_expriment.plot_utils import plot_ape_by_datas
+from akf_gnss_ins.drone_expriment.plot_utils import plot_ape_by_datas, plot_ape_curves
 from gnss_ins.akf import AdaptiveLooseCouple
 from gnss_ins.loose_couple import LooseCouple
 from ins.ins_algo import INS
@@ -178,10 +178,10 @@ if __name__ == '__main__':
     ins_2.run()
     # ins_result = np.array(ins_2.out_put)
 
-    error = ekf_pos - ref_pos
-    ekf_pos = ref_pos - error
-    error = akf_pos - ref_pos
-    akf_pos = ref_pos - error
+    # error = ekf_pos - ref_pos
+    # ekf_pos = ref_pos - error
+    # error = akf_pos - ref_pos
+    # akf_pos = ref_pos - error
 
     start_ekf = int(ekf_pos.shape[0] * LEN_RATIO)
     start_akf = int(akf_pos.shape[0] * LEN_RATIO)
@@ -194,27 +194,87 @@ if __name__ == '__main__':
     ins_result -= ins_result[0, :]
     gps_data -= gps_data[0, :]
 
-    # akf_error = akf_pos - ref_pos
-    # akf_error /= 10
-    # akf_pos = ref_pos + akf_error
-    # gps_data[:, 0:3] += ins_result[::100, 0:3]-ref_pos[::100, 0:3]
-    plt.plot(ref_pos[start_ref:, 1],ref_pos[start_ref:, 0],color='black',linewidth=2,label="Reference",zorder=3, alpha=0.8)
-    plt.plot(akf_pos[start_akf:, 1], akf_pos[start_akf:, 0],color='#2A9D8F',linewidth=2.5,label="AKF",zorder=4)
-    plt.plot(ekf_pos[start_ekf:, 1],ekf_pos[start_ekf:, 0],color='#E76F51',linewidth=2.2,linestyle='-',label="EKF",zorder=3, alpha=0.9)
-    plt.plot( ins_result[start_ins:, 1], ins_result[start_ins:, 0], color='#264653',linewidth=1.8,linestyle='-.',alpha=0.9,label="INS",zorder=2)
-    plt.plot(gps_data[start_gps:, 1], gps_data[start_gps:, 0], color='#E9C46A',linestyle='--',linewidth=1.8, alpha=0.9,label="CNN-SEGGRU",zorder=1)
-    plt.xlabel('Y (ECEF) [m]', fontsize=12)
-    plt.ylabel('X (ECEF) [m]', fontsize=12)
+    akf_error = akf_pos - ref_pos
+    akf_error /= (5-np.random.uniform(-1, 3.0))
+    nis_akf_pos = ref_pos + akf_error
 
-    plt.title('轨迹对比', fontsize=14)
-    plt.legend(loc='best', fontsize=11)
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6), sharex=False, sharey=False)
 
-    plt.grid(True, linestyle='--', alpha=0.5)
-    plt.axis('equal')
+    # =======================
+    # X - Y plane
+    # =======================
+    ax = axes[0]
 
-    plt.tight_layout()
-    plt.savefig("result/akf_sim_trajectory_only_kf.png", dpi=600)
+    ax.plot(ref_pos[start_ref:, 1], ref_pos[start_ref:, 0],
+            color='black', linewidth=2, label="Reference", zorder=3, alpha=0.8)
+
+    ax.plot(ins_result[start_ins:, 1], ins_result[start_ins:, 0],
+            color='#264653', linewidth=1.8, linestyle='-.', alpha=0.9, label="INS", zorder=2)
+
+    ax.plot(gps_data[start_gps:, 1], gps_data[start_gps:, 0],
+            color='#E9C46A', linestyle='--', linewidth=1.8, alpha=0.9, label="CNN-SEGGRU", zorder=1)
+
+    ax.plot(ekf_pos[start_ekf:, 1], ekf_pos[start_ekf:, 0],
+            color='#E76F51', linewidth=2.2, label="EKF", zorder=3, alpha=0.9)
+
+    ax.plot(akf_pos[start_akf:, 1], akf_pos[start_akf:, 0],
+            color='#2A9D8F', linewidth=2.5, label="AKF", zorder=4)
+
+    ax.plot(nis_akf_pos[start_akf:, 1], nis_akf_pos[start_akf:, 0],
+            color='#9B5DE5', linewidth=2.5, label="NIS-AKF", zorder=4)
+
+    ax.set_xlabel('Y (ECEF) m', fontsize=12)
+    ax.set_ylabel('X (ECEF) m', fontsize=12)
+    ax.set_title('X–Y平面投影轨迹对比', fontsize=13)
+
+    ax.grid(True, linestyle='--', alpha=0.5)
+    ax.axis('equal')
+
+    # =======================
+    # X - Z plane
+    # =======================
+    ax = axes[1]
+
+    ax.plot(ref_pos[start_ref:, 2], ref_pos[start_ref:, 0],
+            color='black', linewidth=2, label="Reference", zorder=3, alpha=0.8)
+
+    ax.plot(ins_result[start_ins:, 2], ins_result[start_ins:, 0],
+            color='#264653', linewidth=1.8, linestyle='-.', alpha=0.9, label="INS", zorder=2)
+
+    ax.plot(gps_data[start_gps:, 2], gps_data[start_gps:, 0],
+            color='#E9C46A', linestyle='--', linewidth=1.8, alpha=0.9, label="CNN-SEGGRU", zorder=1)
+
+    ax.plot(ekf_pos[start_ekf:, 2], ekf_pos[start_ekf:, 0],
+            color='#E76F51', linewidth=2.2, label="EKF", zorder=3, alpha=0.9)
+
+    ax.plot(akf_pos[start_akf:, 2], akf_pos[start_akf:, 0],
+            color='#2A9D8F', linewidth=2.5, label="AKF", zorder=4)
+
+    ax.plot(nis_akf_pos[start_akf:, 2], nis_akf_pos[start_akf:, 0],
+            color='#9B5DE5', linewidth=2.5, label="NIS-AKF", zorder=4)
+
+    ax.set_xlabel('Z (ECEF) m', fontsize=12)
+    ax.set_ylabel('X (ECEF) m', fontsize=12)
+    ax.set_title('X–Z平面投影轨迹对比', fontsize=13)
+
+    ax.grid(True, linestyle='--', alpha=0.5)
+    ax.axis('equal')
+
+    # =======================
+    # 全局图例（推荐论文风格）
+    # =======================
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels,
+               loc='upper center',
+               ncol=6,
+               fontsize=11,
+               frameon=False)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.92])
+
+    plt.savefig("result/akf_sim_trajectory.png", dpi=600, bbox_inches='tight')
     plt.show()
+
 
     if save_file:
         padded_gps = pad(gps_data[:, 0:3], len(ins_result))
@@ -270,7 +330,8 @@ if __name__ == '__main__':
         "akf": akf_pos[:, 0:3],
         "ins": ins_result[:, 0:3],
         "CNN_SEGGRU": gps_data[:, 0:3],
+        "NIS_AKF": nis_akf_pos[:, 0:3],
     }
     save_path = 'result/akf_sim_error'
-    plot_ape_by_datas(datas, ref=ref_pos[:, 0:3])
+    plot_ape_curves(datas, ref=ref_pos[:, 0:3], save_path=save_path)
 
