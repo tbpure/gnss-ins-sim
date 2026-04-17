@@ -13,7 +13,7 @@ plt.rcParams['axes.unicode_minus'] = False
 # ======================
 # 2. 读取与预处理
 # ======================
-path = "/Users/yangyu/PycharmProjects/gnss-ins-sim/sim_data_gen/sim_files/saved_file/high_dymanic/low-accuracy"
+path = "/sim_data_gen/sim_files/saved_file/high_dymanic/low-accuracy"
 pos = get_gnss_data_from_path(path, True)
 pos -= pos[0, :]
 dt = 0.01

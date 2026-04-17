@@ -88,8 +88,8 @@ def add_nn_like_error(gps_data, seed=42):
     return gps_data
 
 if __name__ == '__main__':
-    file_path = "/Users/yangyu/PycharmProjects/gnss-ins-sim/sim_data_gen/sim_files/saved_file/high_dymanic/low-accuracy"
-    save_path = "/Users/yangyu/PycharmProjects/gnss-ins-sim/akf_gnss_ins/drone_expriment/high_dynamic/result/high_dymanic.xlsx"
+    file_path = "/sim_data_gen/sim_files/saved_file/motion_def-90deg_turn_long/2026-04-17-18-26-58"
+    save_path = "/akf_gnss_ins/sim_expriment/high_dynamic/result/high_dymanic.xlsx"
     sheet_name = 'low'
     save_file = False
     plot_saved = True
@@ -172,7 +172,7 @@ if __name__ == '__main__':
     for i in range(len(akf_states)):
         s = akf_states[i]
         akf_pos[i] = akf_ins[i] - s[IDX_DR, 0]
-    imu_data_2 = get_imu_data_from_path("/Users/yangyu/PycharmProjects/gnss-ins-sim/sim_data_gen/sim_files/saved_file/default/high-accuracy", ref=False)
+    imu_data_2 = get_imu_data_from_path("/sim_data_gen/sim_files/saved_file/default/high-accuracy", ref=False)
     imu_data_2[:, 3:6] = np.deg2rad(imu_data_2[:, 3:6])
     ins_2 = INS(imu_data_2, gps_data.copy(), init_vel_b.copy(), deg2rad(att_data[0][0:3]))
     ins_2.run()
